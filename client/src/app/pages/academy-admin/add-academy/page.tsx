@@ -54,7 +54,7 @@ export default function AddAcademyPage() {
 
     // Redirect non-admin users
     if (user?.role !== "Admin" && user?.role !== "SuperAdmin") {
-      router.push("/pages/dashboard");
+      router.push("/pages/add-academy");
     }
   }, [router]);
 
