@@ -1,13 +1,13 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const { User, UserAcademy, UserPermission } = require("../models");
+const { User, UserAcademy, UserPermission, Academy } = require("../models");
 const { getPermissionsForRole } = require("../utils/permissions");
 
-// REGISTER (creates an Admin by default)
+// ==================== REGISTER ====================
 const register = async (req, res) => {
   try {
     const { fullName, email, password } = req.body;
-    const role = "Admin"; // ✅ Default role
+    const role = "Admin"; // default
 
     if (!fullName || !email || !password)
       return res.status(400).json({ message: "All fields required" });
@@ -22,14 +22,14 @@ const register = async (req, res) => {
       email,
       password: hashedPassword,
       role,
-      isSuperAdmin: false, // Normal admins are not superadmin
+      isSuperAdmin: false,
     });
 
-    // Assign default permissions based on role
+    // assign default permissions
     const permissions = getPermissionsForRole(role);
     const permRecords = permissions.map((p) => ({
       userId: user.id,
-      academyId: null, // Admin may not be linked yet
+      academyId: null,
       permissionName: p,
     }));
 
@@ -42,7 +42,7 @@ const register = async (req, res) => {
   }
 };
 
-// LOGIN
+// ==================== LOGIN ====================
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -55,12 +55,20 @@ const login = async (req, res) => {
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) return res.status(401).json({ message: "Invalid credentials" });
 
+    // fetch academies linked
     const userAcademies = await UserAcademy.findAll({
       where: { userId: user.id },
       attributes: ["academyId"],
     });
     const academyIds = userAcademies.map((ua) => ua.academyId);
 
+    // set defaultAcademyId
+    let defaultAcademyId = 1;
+    if (!academyIds.includes(1)) {
+      defaultAcademyId = academyIds.length ? academyIds[0] : null;
+    }
+
+    // permissions
     let permissions = [];
     if (user.role === "SuperAdmin") {
       permissions = ["all_permissions"];
@@ -78,6 +86,7 @@ const login = async (req, res) => {
         email: user.email,
         role: user.role,
         academyIds,
+        activeAcademyId: defaultAcademyId,
       },
       process.env.JWT_SECRET,
       { expiresIn: "1d" }
@@ -92,6 +101,7 @@ const login = async (req, res) => {
         email: user.email,
         role: user.role,
         academyIds,
+        activeAcademyId: defaultAcademyId,
       },
       permissions,
     });
@@ -101,7 +111,7 @@ const login = async (req, res) => {
   }
 };
 
-// LOGOUT
+// ==================== LOGOUT ====================
 const logout = (req, res) => {
   res.json({ message: "Logged out successfully" });
 };

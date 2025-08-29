@@ -67,4 +67,6 @@ const requirePermission = (permission) => async (req, res, next) => {
   }
 };
 
+// authMiddleware.js
 module.exports = { authMiddleware, adminAuth, requirePermission };
+

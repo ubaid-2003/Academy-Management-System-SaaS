@@ -25,12 +25,18 @@ fs
     db[model.name] = model;
   });
 
-// Setup associations
+// Setup associations for models that define `associate` method
 Object.keys(db).forEach(modelName => {
   if (db[modelName].associate) {
     db[modelName].associate(db);
   }
 });
+
+// Manually setup many-to-many association for Teacher ↔ Student via junction table
+if (db.Teacher && db.Student && db.TeacherStudent) {
+  db.Teacher.belongsToMany(db.Student, { through: db.TeacherStudent, foreignKey: 'teacherId' });
+  db.Student.belongsToMany(db.Teacher, { through: db.TeacherStudent, foreignKey: 'studentId' });
+}
 
 db.sequelize = sequelize;
 db.Sequelize = Sequelize;

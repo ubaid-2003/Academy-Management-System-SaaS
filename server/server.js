@@ -2,31 +2,52 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
-const { sequelize, User, UserAcademy, UserPermission } = require('./src/models'); // Adjust path if needed
-const authRoutes = require('./src/routes/auth');       
-const academyRoutes = require("./src/routes/academyRoutes");
+
+const { sequelize, User } = require('./src/models'); // Adjust paths
+const authRoutes = require('./src/routes/auth');
+const academyRoutes = require('./src/routes/academyRoutes');
+const studentRoutes = require('./src/routes/studentRoutes');
+const teacherRoutes = require('./src/routes/teacherRoutes');
+const { authMiddleware, adminAuth } = require('./src/middleware/authMiddleware');
 
 const app = express();
 
+// =====================
 // Middleware
+// =====================
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Enable CORS for frontend
 app.use(cors({
-  origin: 'http://localhost:3000', // your frontend
+  origin: 'http://localhost:3000', // change to your frontend
   credentials: true,
 }));
 
-// Routes
-app.use('/api/auth', authRoutes);           
-app.use('/api/academies', academyRoutes);  
-
-// Health check route
+// =====================
+// Health check
+// =====================
 app.get('/', (req, res) => res.send('API is running'));
 
+// =====================
+// Routes
+// =====================
+
+// Auth routes (login/register)
+app.use('/api/auth', authRoutes);
+
+// Academy routes (admin only)
+app.use('/api/academies', authMiddleware, adminAuth, academyRoutes);
+
+// Student routes (admin only)
+app.use('/api/students', authMiddleware, adminAuth, studentRoutes);
+
+// Teacher routes (admin only)
+app.use('/api/teachers', authMiddleware, adminAuth, teacherRoutes);
+
+// =====================
 // Global error handler
+// =====================
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ message: 'Internal Server Error', error: err.message });
@@ -43,14 +64,12 @@ const createSuperAdmin = async () => {
     const existingAdmin = await User.findOne({ where: { email: adminEmail } });
     if (!existingAdmin) {
       const hashedPassword = await bcrypt.hash(adminPassword, 10);
-
       const superAdmin = await User.create({
         fullName: "Super Admin",
         email: adminEmail,
         password: hashedPassword,
-        role: "SuperAdmin", // correct role
+        role: "SuperAdmin",
       });
-
       console.log("SuperAdmin created:", superAdmin.email);
     } else {
       console.log("SuperAdmin already exists:", adminEmail);
@@ -74,4 +93,3 @@ sequelize.sync({ alter: true })
   .catch(err => {
     console.error('Unable to sync database:', err);
   });
-

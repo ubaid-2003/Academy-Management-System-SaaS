@@ -101,7 +101,6 @@
     "semver": "^7.7.2",
     "seq-queue": "^0.0.5",
     "sequelize": "^6.37.7",
-    "sequelize-cli": "^6.6.3",
     "sequelize-pool": "^7.1.0",
     "shebang-command": "^2.0.0",
     "shebang-regex": "^3.0.0",
@@ -131,6 +130,7 @@
   },
   "keywords": [],
   "devDependencies": {
-    "nodemon": "^3.1.10"
+    "nodemon": "^3.1.10",
+    "sequelize-cli": "^6.6.3"
   }
 }

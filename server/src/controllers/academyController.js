@@ -78,21 +78,25 @@ const createAcademy = async (req, res) => {
 
 // ==================== GET USER'S ACADEMIES ====================
 
+// In your academyController.js
 const getUserAcademies = async (req, res) => {
   try {
+    const userId = req.user.id;
+    
     const academies = await Academy.findAll({
       include: [
         {
           model: UserAcademy,
           as: "userAcademies",
-          where: { userId: req.user.id },
-          attributes: ["role"], // include user's role in this academy
-        },
-      ],
+          where: { userId: userId },
+          attributes: ["role"],
+          required: true
+        }
+      ]
     });
 
     if (!academies.length) {
-      return res.json({ message: "No academy created yet." });
+      return res.status(200).json({ message: "No academy created yet." });
     }
 
     res.json(academies);
@@ -104,7 +108,6 @@ const getUserAcademies = async (req, res) => {
     });
   }
 };
-
 
 
 

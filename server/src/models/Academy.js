@@ -4,6 +4,11 @@ module.exports = (sequelize, DataTypes) => {
   const Academy = sequelize.define(
     'Academy',
     {
+      id: {
+        type: DataTypes.INTEGER.UNSIGNED, // ✅ Unsigned to match FK
+        primaryKey: true,
+        autoIncrement: true,
+      },
       name: {
         type: DataTypes.STRING,
         allowNull: false,
@@ -20,7 +25,10 @@ module.exports = (sequelize, DataTypes) => {
       address: DataTypes.STRING,
       city: DataTypes.STRING,
       province: DataTypes.STRING,
-      country: DataTypes.STRING,
+      country: {
+        type: DataTypes.STRING,
+        defaultValue: 'Pakistan',
+      },
       email: DataTypes.STRING,
       phone: DataTypes.STRING,
       principalName: DataTypes.STRING,
@@ -28,25 +36,29 @@ module.exports = (sequelize, DataTypes) => {
       totalTeachers: DataTypes.INTEGER,
     },
     {
-      tableName: 'Academies', // make sure it matches your DB table
+      tableName: 'Academies',
       timestamps: true,
     }
   );
 
   Academy.associate = function (models) {
-    // Many-to-Many with User
+    // Many-to-Many with Users (Admin, Teacher)
     Academy.belongsToMany(models.User, {
       through: models.UserAcademy,
       as: 'users',
       foreignKey: 'academyId',
     });
 
-    // Direct relation to UserAcademy for querying role
-    Academy.hasMany(models.UserAcademy, {
-      as: 'userAcademies',
-      foreignKey: 'academyId',
-    });
+    // Explicitly define Academy -> UserAcademy
+    Academy.hasMany(models.UserAcademy, { foreignKey: 'academyId', as: 'userAcademies' });
+
+    // Academy has many Students
+    Academy.hasMany(models.Student, { foreignKey: 'academyId', as: 'students' });
+
+    // Academy has many Teachers
+    Academy.hasMany(models.Teacher, { foreignKey: 'academyId', as: 'teachers' });
   };
+
 
   return Academy;
 };

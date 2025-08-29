@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname} from "next/navigation";
+
 import {
     Home,
     Users,
@@ -17,6 +18,8 @@ import {
     Search,
     Menu,
     X,
+    Building2,
+    ChevronDown,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
@@ -24,10 +27,19 @@ interface DashboardLayoutProps {
     children?: React.ReactNode;
 }
 
+// Mock data for academies - replace with actual data from your context/API
+const mockAcademies = [
+    { id: 1, name: "Sunrise Academy", location: "Downtown" },
+    { id: 2, name: "Greenfield School", location: "Suburbs" },
+    { id: 3, name: "Oakwood Institute", location: "City Center" },
+];
+
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
     const router = useRouter();
     const [collapsed, setCollapsed] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [academyDropdownOpen, setAcademyDropdownOpen] = useState(false);
+    const [currentAcademy, setCurrentAcademy] = useState(mockAcademies[0]);
     const { user, setUser } = useAuth();
 
     const handleLogout = () => {
@@ -39,11 +51,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         }
     };
 
+    const handleAcademySwitch = (academy: typeof mockAcademies[0]) => {
+        setCurrentAcademy(academy);
+        setAcademyDropdownOpen(false);
+        // Add your academy switching logic here
+        // For example: updateCurrentAcademy(academy);
+    };
+
     const navigationItems = [
         { label: "Dashboard", href: "/pages/dashboard", icon: Home },
         { label: "Academies", href: "/pages/academy-admin/academies", icon: GraduationCap },
         { label: "Add Academy", href: "/pages/academy-admin/add-academy", icon: GraduationCap },
-        { label: "Teachers", href: "#", icon: Users},
+        { label: "Teachers", href: "#", icon: Users },
         { label: "Students", href: "#", icon: Users },
         { label: "Analytics", href: "#", icon: BarChart },
         { label: "About Us", href: "#", icon: Info },
@@ -60,13 +79,19 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 />
             )}
 
+            {/* Academy dropdown overlay */}
+            {academyDropdownOpen && (
+                <div
+                    className="fixed inset-0 z-30"
+                    onClick={() => setAcademyDropdownOpen(false)}
+                />
+            )}
+
             {/* Sidebar */}
             <aside
-                className={`${
-                    collapsed ? "w-20" : "w-72"
-                } ${
-                    mobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
-                } fixed md:relative z-50 h-full bg-white border-r border-slate-200 flex flex-col transition-all duration-300 shadow-xl md:shadow-sm`}
+                className={`${collapsed ? "w-20" : "w-72"
+                    } ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+                    } fixed md:relative z-50 h-full bg-white border-r border-slate-200 flex flex-col transition-all duration-300 shadow-xl md:shadow-sm`}
             >
                 {/* Logo / Header */}
                 <div className="flex items-center justify-between h-20 px-6 border-b border-slate-100 bg-slate-50/50">
@@ -85,7 +110,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                             </div>
                         </div>
                     )}
-                    
+
                     {/* Desktop collapse button */}
                     <button
                         onClick={() => setCollapsed(!collapsed)}
@@ -109,8 +134,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
                 {/* Navigation */}
                 <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-                    {navigationItems.map((item, index) => {
+                    {navigationItems.map((item) => {
                         const Icon = item.icon;
+                        const pathname = usePathname(); // ✅ Get current route
+
+                        const isActive = pathname === item.href; // ✅ Check if this menu is active
+
                         return (
                             <button
                                 key={item.label}
@@ -118,11 +147,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                                     router.push(item.href);
                                     setMobileMenuOpen(false);
                                 }}
-                                className={`w-full flex items-center space-x-4 px-4 py-3 rounded-xl transition-all duration-200 group ${
-                                    collapsed ? "justify-center" : ""
-                                } text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium`}
+                                className={`w-full flex items-center space-x-4 px-4 py-3 rounded-xl transition-all duration-200 group 
+          ${collapsed ? "justify-center" : ""}
+          ${isActive
+                                        ? "bg-slate-200 text-slate-900 font-semibold" // ✅ Active style
+                                        : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                                    }`}
                             >
-                                <Icon className="flex-shrink-0 w-5 h-5 transition-colors" />
+                                <Icon
+                                    className={`flex-shrink-0 w-5 h-5 transition-colors ${isActive ? "text-slate-900" : ""
+                                        }`}
+                                />
                                 {!collapsed && (
                                     <span className="font-medium tracking-tight">{item.label}</span>
                                 )}
@@ -159,9 +194,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
                     <button
                         onClick={handleLogout}
-                        className={`flex items-center space-x-3 p-3 w-full rounded-xl hover:bg-red-50 text-red-600 transition-all duration-200 font-medium ${
-                            collapsed ? "justify-center" : ""
-                        }`}
+                        className={`flex items-center space-x-3 p-3 w-full rounded-xl hover:bg-red-50 text-red-600 transition-all duration-200 font-medium ${collapsed ? "justify-center" : ""
+                            }`}
                     >
                         <LogOut className="w-5 h-5" />
                         {!collapsed && <span>Sign Out</span>}
@@ -193,6 +227,62 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     </div>
 
                     <div className="flex items-center space-x-3">
+                        {/* Switch Academy Dropdown */}
+                        <div className="relative">
+                            <button
+                                onClick={() => setAcademyDropdownOpen(!academyDropdownOpen)}
+                                className="flex items-center px-4 py-2 space-x-3 text-sm font-medium transition-all border border-slate-200 rounded-xl bg-slate-50 hover:bg-white hover:border-blue-500 hover:text-blue-700 text-slate-700"
+                            >
+                                <Building2 className="w-4 h-4" />
+                                <div className="hidden text-left sm:block">
+                                    <div className="font-semibold">{currentAcademy.name}</div>
+                                    <div className="text-xs text-slate-500">{currentAcademy.location}</div>
+                                </div>
+                                <ChevronDown className={`w-4 h-4 transition-transform ${academyDropdownOpen ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {/* Academy Dropdown Menu */}
+                            {academyDropdownOpen && (
+                                <div className="absolute right-0 z-40 w-64 mt-2 bg-white border shadow-lg border-slate-200 rounded-xl">
+                                    <div className="p-2">
+                                        <div className="px-3 py-2 text-xs font-semibold tracking-wide uppercase text-slate-500">
+                                            Switch Academy
+                                        </div>
+                                        {mockAcademies.map((academy) => (
+                                            <button
+                                                key={academy.id}
+                                                onClick={() => handleAcademySwitch(academy)}
+                                                className={`w-full flex items-center space-x-3 px-3 py-3 rounded-lg transition-all duration-200 text-left ${
+                                                    currentAcademy.id === academy.id 
+                                                        ? "bg-blue-50 text-blue-700 border border-blue-200" 
+                                                        : "hover:bg-slate-50 text-slate-700"
+                                                }`}
+                                            >
+                                                <div className={`flex items-center justify-center w-8 h-8 rounded-lg ${
+                                                    currentAcademy.id === academy.id 
+                                                        ? "bg-blue-100" 
+                                                        : "bg-slate-100"
+                                                }`}>
+                                                    <Building2 className={`w-4 h-4 ${
+                                                        currentAcademy.id === academy.id 
+                                                            ? "text-blue-600" 
+                                                            : "text-slate-500"
+                                                    }`} />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="font-semibold truncate">{academy.name}</div>
+                                                    <div className="text-xs text-slate-500">{academy.location}</div>
+                                                </div>
+                                                {currentAcademy.id === academy.id && (
+                                                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                                )}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
                         {/* Search */}
                         <div className="relative hidden sm:block">
                             <input
