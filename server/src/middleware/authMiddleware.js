@@ -15,12 +15,14 @@ const authMiddleware = async (req, res, next) => {
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       const user = await User.findByPk(decoded.id);
-      if (!user) return res.status(401).json({ message: "Unauthorized: User not found" });
+
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized: User not found" });
+      }
 
       req.user = user;
       next();
     } catch (err) {
-      // Handle token expiration
       if (err.name === "TokenExpiredError") {
         return res.status(401).json({
           message: "Token expired. Use refresh token to get a new token.",
@@ -36,11 +38,15 @@ const authMiddleware = async (req, res, next) => {
 };
 
 // ==================== ADMIN CHECK ====================
+// Whoever has role 'admin' or 'superadmin' (case-insensitive) is treated as admin
 const adminAuth = (req, res, next) => {
   try {
-    if (!req.user) return res.status(401).json({ message: "Unauthorized: No user attached" });
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized: No user attached" });
+    }
 
-    if (req.user.role !== "Admin" && req.user.role !== "SuperAdmin") {
+    const role = String(req.user.role || "").toLowerCase();
+    if (!["admin", "superadmin"].includes(role)) {
       return res.status(403).json({ message: "Access denied: Admins only" });
     }
 
@@ -54,12 +60,22 @@ const adminAuth = (req, res, next) => {
 // ==================== PERMISSION CHECK ====================
 const requirePermission = (permission) => async (req, res, next) => {
   try {
-    if (
-      req.user.role === "SuperAdmin" ||
-      (req.user.permissions && req.user.permissions.some(p => p.permissionName === permission))
-    ) {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized: No user attached" });
+    }
+
+    const role = String(req.user.role || "").toLowerCase();
+
+    // superadmin bypasses all permission checks
+    if (role === "superadmin") {
       return next();
     }
+
+    // if user has permission explicitly
+    if (req.user.permissions && req.user.permissions.some(p => p.permissionName === permission)) {
+      return next();
+    }
+
     return res.status(403).json({ message: "Forbidden. Insufficient permissions" });
   } catch (err) {
     console.error("RequirePermission Error:", err);
@@ -67,6 +83,4 @@ const requirePermission = (permission) => async (req, res, next) => {
   }
 };
 
-// authMiddleware.js
 module.exports = { authMiddleware, adminAuth, requirePermission };
-

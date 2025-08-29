@@ -1,990 +1,651 @@
-// 'use client';
+import React, { useState } from 'react';
+import { Search, Plus, Edit, Eye, Filter, X } from 'lucide-react';
 
-// import { useState } from 'react';
-// import { Upload, X, Plus, Eye, EyeOff, Calendar, MapPin, Phone, Mail, User, BookOpen, Award, Clock, DollarSign } from 'lucide-react';
+const TeacherRegistrationPage = () => {
+  const [showForm, setShowForm] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState('All');
+  const [filterSubject, setFilterSubject] = useState('All');
+  
+  // Sample teacher data including the provided example
+  const [teachers, setTeachers] = useState([
+    {
+      firstName: "Hassan",
+      lastName: "Raza", 
+      email: "hassan.raza@example.com",
+      phone: "03012349876",
+      dateOfBirth: "1990-12-05",
+      gender: "Male",
+      address: "Street 5, Karachi",
+      city: "Karachi",
+      province: "Sindh",
+      country: "Pakistan",
+      qualification: "BSc Computer Science",
+      subjectSpecialization: "Computer Science",
+      dateOfJoining: "2018-09-10",
+      employeeId: "TCH103",
+      emergencyContactName: "Ayesha Raza",
+      emergencyContactPhone: "03004561234",
+      bloodGroup: "A+",
+      status: "Active",
+      notes: "Computer Lab in-charge"
+    },
+    {
+      firstName: "Fatima",
+      lastName: "Ali",
+      email: "fatima.ali@example.com", 
+      phone: "03015678901",
+      dateOfBirth: "1985-03-15",
+      gender: "Female",
+      address: "Block B, Model Town",
+      city: "Lahore", 
+      province: "Punjab",
+      country: "Pakistan",
+      qualification: "MSc Mathematics",
+      subjectSpecialization: "Mathematics",
+      dateOfJoining: "2020-01-15",
+      employeeId: "TCH104",
+      emergencyContactName: "Ahmed Ali",
+      emergencyContactPhone: "03007894561",
+      bloodGroup: "B+",
+      status: "Active",
+      notes: "Head of Mathematics Department"
+    }
+  ]);
 
-// export default function AddTeachersPage() {
-//   const [currentStep, setCurrentStep] = useState(1);
-//   const [showPassword, setShowPassword] = useState(false);
-//   const [profileImage, setProfileImage] = useState(null);
-//   const [documents, setDocuments] = useState([]);
-//   const [qualifications, setQualifications] = useState([{ degree: '', institution: '', year: '', grade: '' }]);
-//   const [experience, setExperience] = useState([{ position: '', company: '', duration: '', description: '' }]);
-//   const [subjects, setSubjects] = useState([]);
-//   const [availability, setAvailability] = useState({
-//     monday: { available: false, startTime: '', endTime: '' },
-//     tuesday: { available: false, startTime: '', endTime: '' },
-//     wednesday: { available: false, startTime: '', endTime: '' },
-//     thursday: { available: false, startTime: '', endTime: '' },
-//     friday: { available: false, startTime: '', endTime: '' },
-//     saturday: { available: false, startTime: '', endTime: '' },
-//     sunday: { available: false, startTime: '', endTime: '' }
-//   });
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    dateOfBirth: '',
+    gender: '',
+    address: '',
+    city: '',
+    province: '',
+    country: 'Pakistan',
+    qualification: '',
+    subjectSpecialization: '',
+    dateOfJoining: '',
+    employeeId: '',
+    emergencyContactName: '',
+    emergencyContactPhone: '',
+    bloodGroup: '',
+    status: 'Active',
+    notes: ''
+  });
 
-//   const [formData, setFormData] = useState({
-//     // Personal Information
-//     firstName: '',
-//     lastName: '',
-//     email: '',
-//     phone: '',
-//     dateOfBirth: '',
-//     gender: '',
-//     nationality: '',
-//     address: '',
-//     city: '',
-//     state: '',
-//     zipCode: '',
-//     emergencyContact: '',
-//     emergencyPhone: '',
+  // Get unique subjects and statuses for filters
+  const subjects = [...new Set(teachers.map(t => t.subjectSpecialization))];
+  const statuses = [...new Set(teachers.map(t => t.status))];
+
+  // Filter teachers based on search and filters
+  const filteredTeachers = teachers.filter(teacher => {
+    const matchesSearch = 
+      teacher.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      teacher.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      teacher.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      teacher.email.toLowerCase().includes(searchTerm.toLowerCase());
     
-//     // Professional Information
-//     employeeId: '',
-//     department: '',
-//     position: 'Teacher',
-//     joiningDate: '',
-//     employmentType: 'Full-time',
-//     salary: '',
+    const matchesStatus = filterStatus === 'All' || teacher.status === filterStatus;
+    const matchesSubject = filterSubject === 'All' || teacher.subjectSpecialization === filterSubject;
     
-//     // Academic Information
-//     teachingExperience: '',
-//     specialization: [],
-//     certifications: [],
-//     languages: [],
+    return matchesSearch && matchesStatus && matchesSubject;
+  });
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    // Generate employee ID if not provided
+    const newEmployeeId = formData.employeeId || `TCH${String(teachers.length + 105).padStart(3, '0')}`;
     
-//     // Account Information
-//     username: '',
-//     password: '',
-//     role: 'teacher',
+    const newTeacher = {
+      ...formData,
+      employeeId: newEmployeeId
+    };
     
-//     // Additional Information
-//     biography: '',
-//     achievements: '',
-//     hobbies: '',
-//     bloodGroup: '',
-//     maritalStatus: ''
-//   });
+    setTeachers(prev => [...prev, newTeacher]);
+    setFormData({
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      dateOfBirth: '',
+      gender: '',
+      address: '',
+      city: '',
+      province: '',
+      country: 'Pakistan',
+      qualification: '',
+      subjectSpecialization: '',
+      dateOfJoining: '',
+      employeeId: '',
+      emergencyContactName: '',
+      emergencyContactPhone: '',
+      bloodGroup: '',
+      status: 'Active',
+      notes: ''
+    });
+    setShowForm(false);
+  };
 
-//   const steps = [
-//     { number: 1, title: 'Personal Info', description: 'Basic personal details' },
-//     { number: 2, title: 'Professional', description: 'Work & qualification details' },
-//     { number: 3, title: 'Academic', description: 'Teaching & subject information' },
-//     { number: 4, title: 'Schedule', description: 'Availability & timetable' },
-//     { number: 5, title: 'Review', description: 'Verify all information' }
-//   ];
+  const clearFilters = () => {
+    setSearchTerm('');
+    setFilterStatus('All');
+    setFilterSubject('All');
+  };
 
-//   const subjectsList = [
-//     'Mathematics', 'Physics', 'Chemistry', 'Biology', 'English', 'History',
-//     'Geography', 'Computer Science', 'Economics', 'Psychology', 'Art',
-//     'Music', 'Physical Education', 'Foreign Languages', 'Philosophy'
-//   ];
+  if (showForm) {
+    return (
+      <div className="min-h-screen p-6 bg-gray-50">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-white border rounded-lg shadow-sm">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h1 className="text-2xl font-bold text-gray-900">Add New Teacher</h1>
+              <button
+                onClick={() => setShowForm(false)}
+                className="p-2 text-gray-500 rounded-lg hover:text-gray-700 hover:bg-gray-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
-//   const handleInputChange = (e) => {
-//     const { name, value } = e.target;
-//     setFormData(prev => ({ ...prev, [name]: value }));
-//   };
+            <div className="p-6">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {/* Personal Information */}
+                <div className="lg:col-span-3">
+                  <h3 className="mb-4 text-lg font-semibold text-gray-900">Personal Information</h3>
+                </div>
+                
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">First Name *</label>
+                  <input
+                    type="text"
+                    name="firstName"
+                    value={formData.firstName}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
 
-//   const handleImageUpload = (e) => {
-//     const file = e.target.files[0];
-//     if (file) {
-//       const reader = new FileReader();
-//       reader.onload = (e) => setProfileImage(e.target.result);
-//       reader.readAsDataURL(file);
-//     }
-//   };
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">Last Name *</label>
+                  <input
+                    type="text"
+                    name="lastName"
+                    value={formData.lastName}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
 
-//   const handleDocumentUpload = (e) => {
-//     const files = Array.from(e.target.files);
-//     const newDocs = files.map(file => ({
-//       id: Date.now() + Math.random(),
-//       name: file.name,
-//       type: file.type,
-//       size: file.size
-//     }));
-//     setDocuments(prev => [...prev, ...newDocs]);
-//   };
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">Email *</label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
 
-//   const removeDocument = (id) => {
-//     setDocuments(prev => prev.filter(doc => doc.id !== id));
-//   };
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">Phone *</label>
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
 
-//   const addQualification = () => {
-//     setQualifications(prev => [...prev, { degree: '', institution: '', year: '', grade: '' }]);
-//   };
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">Date of Birth *</label>
+                  <input
+                    type="date"
+                    name="dateOfBirth"
+                    value={formData.dateOfBirth}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
 
-//   const updateQualification = (index, field, value) => {
-//     setQualifications(prev => prev.map((qual, i) => 
-//       i === index ? { ...qual, [field]: value } : qual
-//     ));
-//   };
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">Gender *</label>
+                  <select
+                    name="gender"
+                    value={formData.gender}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
 
-//   const removeQualification = (index) => {
-//     setQualifications(prev => prev.filter((_, i) => i !== index));
-//   };
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">Blood Group</label>
+                  <select
+                    name="bloodGroup"
+                    value={formData.bloodGroup}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Select Blood Group</option>
+                    <option value="A+">A+</option>
+                    <option value="A-">A-</option>
+                    <option value="B+">B+</option>
+                    <option value="B-">B-</option>
+                    <option value="AB+">AB+</option>
+                    <option value="AB-">AB-</option>
+                    <option value="O+">O+</option>
+                    <option value="O-">O-</option>
+                  </select>
+                </div>
 
-//   const addExperience = () => {
-//     setExperience(prev => [...prev, { position: '', company: '', duration: '', description: '' }]);
-//   };
+                {/* Address Information */}
+                <div className="mt-6 lg:col-span-3">
+                  <h3 className="mb-4 text-lg font-semibold text-gray-900">Address Information</h3>
+                </div>
 
-//   const updateExperience = (index, field, value) => {
-//     setExperience(prev => prev.map((exp, i) => 
-//       i === index ? { ...exp, [field]: value } : exp
-//     ));
-//   };
+                <div className="md:col-span-2">
+                  <label className="block mb-2 text-sm font-medium text-gray-700">Address *</label>
+                  <input
+                    type="text"
+                    name="address"
+                    value={formData.address}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
 
-//   const removeExperience = (index) => {
-//     setExperience(prev => prev.filter((_, i) => i !== index));
-//   };
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">City *</label>
+                  <input
+                    type="text"
+                    name="city"
+                    value={formData.city}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
 
-//   const toggleSubject = (subject) => {
-//     setSubjects(prev => 
-//       prev.includes(subject) 
-//         ? prev.filter(s => s !== subject)
-//         : [...prev, subject]
-//     );
-//   };
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">Province *</label>
+                  <select
+                    name="province"
+                    value={formData.province}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Select Province</option>
+                    <option value="Punjab">Punjab</option>
+                    <option value="Sindh">Sindh</option>
+                    <option value="Khyber Pakhtunkhwa">Khyber Pakhtunkhwa</option>
+                    <option value="Balochistan">Balochistan</option>
+                    <option value="Islamabad Capital Territory">Islamabad Capital Territory</option>
+                  </select>
+                </div>
 
-//   const updateAvailability = (day, field, value) => {
-//     setAvailability(prev => ({
-//       ...prev,
-//       [day]: { ...prev[day], [field]: value }
-//     }));
-//   };
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">Country *</label>
+                  <input
+                    type="text"
+                    name="country"
+                    value={formData.country}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
 
-//   const nextStep = () => {
-//     if (currentStep < 5) setCurrentStep(currentStep + 1);
-//   };
+                {/* Professional Information */}
+                <div className="mt-6 lg:col-span-3">
+                  <h3 className="mb-4 text-lg font-semibold text-gray-900">Professional Information</h3>
+                </div>
 
-//   const prevStep = () => {
-//     if (currentStep > 1) setCurrentStep(currentStep - 1);
-//   };
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">Qualification *</label>
+                  <input
+                    type="text"
+                    name="qualification"
+                    value={formData.qualification}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
 
-//   const handleSubmit = (e) => {
-//     e.preventDefault();
-//     console.log('Teacher data:', {
-//       ...formData,
-//       profileImage,
-//       documents,
-//       qualifications,
-//       experience,
-//       subjects,
-//       availability
-//     });
-//     // Handle form submission
-//     alert('Teacher added successfully!');
-//   };
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">Subject Specialization *</label>
+                  <input
+                    type="text"
+                    name="subjectSpecialization"
+                    value={formData.subjectSpecialization}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
 
-//   const renderPersonalInfo = () => (
-//     <div className="space-y-6">
-//       <div className="mb-8 text-center">
-//         <div className="relative inline-block">
-//           <div className="w-32 h-32 mx-auto overflow-hidden bg-gray-100 border-4 border-gray-200 rounded-full">
-//             {profileImage ? (
-//               <img src={profileImage} alt="Profile" className="object-cover w-full h-full" />
-//             ) : (
-//               <div className="flex items-center justify-center w-full h-full text-gray-400">
-//                 <User size={48} />
-//               </div>
-//             )}
-//           </div>
-//           <label className="absolute bottom-0 right-0 p-2 text-white bg-blue-600 rounded-full cursor-pointer hover:bg-blue-700">
-//             <Upload size={16} />
-//             <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-//           </label>
-//         </div>
-//       </div>
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">Date of Joining *</label>
+                  <input
+                    type="date"
+                    name="dateOfJoining"
+                    value={formData.dateOfJoining}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
 
-//       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-//         <div>
-//           <label className="block mb-2 text-sm font-medium text-gray-700">First Name *</label>
-//           <input
-//             type="text"
-//             name="firstName"
-//             value={formData.firstName}
-//             onChange={handleInputChange}
-//             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//             placeholder="Enter first name"
-//             required
-//           />
-//         </div>
-//         <div>
-//           <label className="block mb-2 text-sm font-medium text-gray-700">Last Name *</label>
-//           <input
-//             type="text"
-//             name="lastName"
-//             value={formData.lastName}
-//             onChange={handleInputChange}
-//             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//             placeholder="Enter last name"
-//             required
-//           />
-//         </div>
-//         <div>
-//           <label className="block mb-2 text-sm font-medium text-gray-700">Email Address *</label>
-//           <div className="relative">
-//             <Mail className="absolute left-3 top-3.5 text-gray-400" size={20} />
-//             <input
-//               type="email"
-//               name="email"
-//               value={formData.email}
-//               onChange={handleInputChange}
-//               className="w-full py-3 pr-4 border border-gray-300 rounded-lg pl-11 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//               placeholder="Enter email address"
-//               required
-//             />
-//           </div>
-//         </div>
-//         <div>
-//           <label className="block mb-2 text-sm font-medium text-gray-700">Phone Number *</label>
-//           <div className="relative">
-//             <Phone className="absolute left-3 top-3.5 text-gray-400" size={20} />
-//             <input
-//               type="tel"
-//               name="phone"
-//               value={formData.phone}
-//               onChange={handleInputChange}
-//               className="w-full py-3 pr-4 border border-gray-300 rounded-lg pl-11 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//               placeholder="Enter phone number"
-//               required
-//             />
-//           </div>
-//         </div>
-//         <div>
-//           <label className="block mb-2 text-sm font-medium text-gray-700">Date of Birth *</label>
-//           <div className="relative">
-//             <Calendar className="absolute left-3 top-3.5 text-gray-400" size={20} />
-//             <input
-//               type="date"
-//               name="dateOfBirth"
-//               value={formData.dateOfBirth}
-//               onChange={handleInputChange}
-//               className="w-full py-3 pr-4 border border-gray-300 rounded-lg pl-11 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//               required
-//             />
-//           </div>
-//         </div>
-//         <div>
-//           <label className="block mb-2 text-sm font-medium text-gray-700">Gender *</label>
-//           <select
-//             name="gender"
-//             value={formData.gender}
-//             onChange={handleInputChange}
-//             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//             required
-//           >
-//             <option value="">Select gender</option>
-//             <option value="male">Male</option>
-//             <option value="female">Female</option>
-//             <option value="other">Other</option>
-//           </select>
-//         </div>
-//         <div>
-//           <label className="block mb-2 text-sm font-medium text-gray-700">Nationality</label>
-//           <input
-//             type="text"
-//             name="nationality"
-//             value={formData.nationality}
-//             onChange={handleInputChange}
-//             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//             placeholder="Enter nationality"
-//           />
-//         </div>
-//         <div>
-//           <label className="block mb-2 text-sm font-medium text-gray-700">Blood Group</label>
-//           <select
-//             name="bloodGroup"
-//             value={formData.bloodGroup}
-//             onChange={handleInputChange}
-//             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//           >
-//             <option value="">Select blood group</option>
-//             <option value="A+">A+</option>
-//             <option value="A-">A-</option>
-//             <option value="B+">B+</option>
-//             <option value="B-">B-</option>
-//             <option value="AB+">AB+</option>
-//             <option value="AB-">AB-</option>
-//             <option value="O+">O+</option>
-//             <option value="O-">O-</option>
-//           </select>
-//         </div>
-//       </div>
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">Employee ID</label>
+                  <input
+                    type="text"
+                    name="employeeId"
+                    value={formData.employeeId}
+                    onChange={handleInputChange}
+                    placeholder="Auto-generated if empty"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
 
-//       <div>
-//         <label className="block mb-2 text-sm font-medium text-gray-700">Hobbies & Interests</label>
-//         <textarea
-//           name="hobbies"
-//           value={formData.hobbies}
-//           onChange={handleInputChange}
-//           rows="2"
-//           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//           placeholder="Personal hobbies and interests..."
-//         />
-//       </div>
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">Status *</label>
+                  <select
+                    name="status"
+                    value={formData.status}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                    <option value="On Leave">On Leave</option>
+                  </select>
+                </div>
 
-//       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-//         <div>
-//           <label className="block mb-2 text-sm font-medium text-gray-700">Username *</label>
-//           <input
-//             type="text"
-//             name="username"
-//             value={formData.username}
-//             onChange={handleInputChange}
-//             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//             placeholder="Create username"
-//             required
-//           />
-//         </div>
-//         <div>
-//           <label className="block mb-2 text-sm font-medium text-gray-700">Password *</label>
-//           <div className="relative">
-//             <input
-//               type={showPassword ? "text" : "password"}
-//               name="password"
-//               value={formData.password}
-//               onChange={handleInputChange}
-//               className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//               placeholder="Create password"
-//               required
-//             />
-//             <button
-//               type="button"
-//               onClick={() => setShowPassword(!showPassword)}
-//               className="absolute right-3 top-3.5 text-gray-400"
-//             >
-//               {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-//             </button>
-//           </div>
-//         </div>
-//       </div>
-//     </div>
-//   );
+                {/* Emergency Contact */}
+                <div className="mt-6 lg:col-span-3">
+                  <h3 className="mb-4 text-lg font-semibold text-gray-900">Emergency Contact</h3>
+                </div>
 
-//   const renderScheduleInfo = () => (
-//     <div className="space-y-6">
-//       <h3 className="text-lg font-semibold text-gray-800">Weekly Availability</h3>
-//       <div className="space-y-4">
-//         {Object.keys(availability).map((day) => (
-//           <div key={day} className="p-4 border border-gray-200 rounded-lg">
-//             <div className="flex items-center justify-between mb-4">
-//               <label className="flex items-center space-x-3">
-//                 <input
-//                   type="checkbox"
-//                   checked={availability[day].available}
-//                   onChange={(e) => updateAvailability(day, 'available', e.target.checked)}
-//                   className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-//                 />
-//                 <span className="text-lg font-medium text-gray-700 capitalize">{day}</span>
-//               </label>
-//               {availability[day].available && (
-//                 <div className="flex items-center space-x-4">
-//                   <div className="flex items-center space-x-2">
-//                     <Clock size={16} className="text-gray-400" />
-//                     <input
-//                       type="time"
-//                       value={availability[day].startTime}
-//                       onChange={(e) => updateAvailability(day, 'startTime', e.target.value)}
-//                       className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//                     />
-//                     <span className="text-gray-500">to</span>
-//                     <input
-//                       type="time"
-//                       value={availability[day].endTime}
-//                       onChange={(e) => updateAvailability(day, 'endTime', e.target.value)}
-//                       className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//                     />
-//                   </div>
-//                 </div>
-//               )}
-//             </div>
-//             {!availability[day].available && (
-//               <p className="text-sm text-gray-500">Not available on {day}</p>
-//             )}
-//           </div>
-//         ))}
-//       </div>
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">Emergency Contact Name *</label>
+                  <input
+                    type="text"
+                    name="emergencyContactName"
+                    value={formData.emergencyContactName}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
 
-//       <div className="p-4 border border-blue-200 rounded-lg bg-blue-50">
-//         <h4 className="mb-2 font-semibold text-blue-800">Additional Schedule Notes</h4>
-//         <textarea
-//           rows="3"
-//           className="w-full px-4 py-3 bg-white border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//           placeholder="Any additional notes about availability, preferred time slots, or scheduling constraints..."
-//         />
-//       </div>
-//     </div>
-//   );
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-gray-700">Emergency Contact Phone *</label>
+                  <input
+                    type="tel"
+                    name="emergencyContactPhone"
+                    value={formData.emergencyContactPhone}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
 
-//   const renderReview = () => (
-//     <div className="space-y-8">
-//       <div className="p-6 border border-green-200 rounded-lg bg-gradient-to-r from-green-50 to-blue-50">
-//         <h3 className="mb-4 text-xl font-semibold text-gray-800">Review Teacher Information</h3>
-//         <p className="text-gray-600">Please review all the information before submitting. Make sure all required fields are filled correctly.</p>
-//       </div>
+                <div className="lg:col-span-3">
+                  <label className="block mb-2 text-sm font-medium text-gray-700">Notes</label>
+                  <textarea
+                    name="notes"
+                    value={formData.notes}
+                    onChange={handleInputChange}
+                    rows="3"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Additional notes about the teacher..."
+                  />
+                </div>
+              </div>
 
-//       {/* Personal Information Summary */}
-//       <div className="p-6 bg-white border border-gray-200 rounded-lg">
-//         <h4 className="flex items-center mb-4 font-semibold text-gray-800">
-//           <User className="mr-2" size={20} />
-//           Personal Information
-//         </h4>
-//         <div className="grid grid-cols-2 gap-4 text-sm">
-//           <div><span className="font-medium">Name:</span> {formData.firstName} {formData.lastName}</div>
-//           <div><span className="font-medium">Email:</span> {formData.email}</div>
-//           <div><span className="font-medium">Phone:</span> {formData.phone}</div>
-//           <div><span className="font-medium">Date of Birth:</span> {formData.dateOfBirth}</div>
-//           <div><span className="font-medium">Gender:</span> {formData.gender}</div>
-//           <div><span className="font-medium">Nationality:</span> {formData.nationality}</div>
-//         </div>
-//       </div>
 
-//       {/* Professional Information Summary */}
-//       <div className="p-6 bg-white border border-gray-200 rounded-lg">
-//         <h4 className="flex items-center mb-4 font-semibold text-gray-800">
-//           <BookOpen className="mr-2" size={20} />
-//           Professional Information
-//         </h4>
-//         <div className="grid grid-cols-2 gap-4 text-sm">
-//           <div><span className="font-medium">Employee ID:</span> {formData.employeeId}</div>
-//           <div><span className="font-medium">Department:</span> {formData.department}</div>
-//           <div><span className="font-medium">Position:</span> {formData.position}</div>
-//           <div><span className="font-medium">Joining Date:</span> {formData.joiningDate}</div>
-//           <div><span className="font-medium">Employment Type:</span> {formData.employmentType}</div>
-//           <div><span className="font-medium">Salary:</span> ${formData.salary}</div>
-//         </div>
-//       </div>
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-//       {/* Academic Information Summary */}
-//       <div className="p-6 bg-white border border-gray-200 rounded-lg">
-//         <h4 className="flex items-center mb-4 font-semibold text-gray-800">
-//           <Award className="mr-2" size={20} />
-//           Academic Information
-//         </h4>
-//         <div className="space-y-2 text-sm">
-//           <div><span className="font-medium">Teaching Experience:</span> {formData.teachingExperience} years</div>
-//           <div><span className="font-medium">Teaching Subjects:</span> {subjects.join(', ')}</div>
-//           <div><span className="font-medium">Qualifications:</span> {qualifications.length} qualification(s) added</div>
-//           <div><span className="font-medium">Work Experience:</span> {experience.length} experience(s) added</div>
-//         </div>
-//       </div>
+  return (
+    <div className="min-h-screen p-6 bg-gray-50">
+      <div className="mx-auto max-w-7xl">
+        {/* Header */}
+        <div className="mb-6 bg-white border rounded-lg shadow-sm">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">Teacher Management</h1>
+                <p className="mt-1 text-gray-600">Manage teacher registrations and records</p>
+              </div>
+              <button
+                onClick={() => setShowForm(true)}
+                className="flex items-center gap-2 px-4 py-2 font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              >
+                <Plus className="w-5 h-5" />
+                Add Teacher
+              </button>
+            </div>
+          </div>
 
-//       {/* Schedule Summary */}
-//       <div className="p-6 bg-white border border-gray-200 rounded-lg">
-//         <h4 className="flex items-center mb-4 font-semibold text-gray-800">
-//           <Clock className="mr-2" size={20} />
-//           Schedule Summary
-//         </h4>
-//         <div className="space-y-1 text-sm">
-//           {Object.entries(availability).map(([day, schedule]) => (
-//             <div key={day} className="flex justify-between">
-//               <span className="font-medium capitalize">{day}:</span>
-//               <span>
-//                 {schedule.available 
-//                   ? `${schedule.startTime} - ${schedule.endTime}`
-//                   : 'Not available'
-//                 }
-//               </span>
-//             </div>
-//           ))}
-//         </div>
-//       </div>
-//     </div>
-//   );
+          {/* Stats */}
+          <div className="px-6 py-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+              <div className="p-4 rounded-lg bg-blue-50">
+                <div className="text-2xl font-bold text-blue-600">{teachers.length}</div>
+                <div className="text-sm text-blue-600">Total Teachers</div>
+              </div>
+              <div className="p-4 rounded-lg bg-green-50">
+                <div className="text-2xl font-bold text-green-600">
+                  {teachers.filter(t => t.status === 'Active').length}
+                </div>
+                <div className="text-sm text-green-600">Active Teachers</div>
+              </div>
+              <div className="p-4 rounded-lg bg-yellow-50">
+                <div className="text-2xl font-bold text-yellow-600">
+                  {teachers.filter(t => t.status === 'On Leave').length}
+                </div>
+                <div className="text-sm text-yellow-600">On Leave</div>
+              </div>
+              <div className="p-4 rounded-lg bg-red-50">
+                <div className="text-2xl font-bold text-red-600">
+                  {teachers.filter(t => t.status === 'Inactive').length}
+                </div>
+                <div className="text-sm text-red-600">Inactive</div>
+              </div>
+            </div>
+          </div>
+        </div>
 
-//   return (
-//     <div className="min-h-screen p-6 bg-gradient-to-br from-slate-50 to-blue-50">
-//       <div className="max-w-4xl mx-auto">
-//         {/* Header */}
-//         <div className="mb-8 bg-white border border-gray-100 shadow-lg rounded-xl">
-//           <div className="p-6 border-b border-gray-200">
-//             <h1 className="text-3xl font-bold text-transparent bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text">
-//               Add New Teacher
-//             </h1>
-//             <p className="mt-2 text-gray-600">Complete all steps to register a new teacher in the academy system</p>
-//           </div>
+        {/* Filters and Search */}
+        <div className="mb-6 bg-white border rounded-lg shadow-sm">
+          <div className="px-6 py-4">
+            <div className="flex flex-col gap-4 lg:flex-row">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute w-5 h-5 text-gray-400 transform -translate-y-1/2 left-3 top-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Search by name, email, or employee ID..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full py-2 pl-10 pr-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex gap-3">
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="All">All Status</option>
+                  {statuses.map(status => (
+                    <option key={status} value={status}>{status}</option>
+                  ))}
+                </select>
 
-//           {/* Progress Steps */}
-//           <div className="p-6">
-//             <div className="flex items-center justify-between">
-//               {steps.map((step, index) => (
-//                 <div key={step.number} className="flex items-center">
-//                   <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
-//                     currentStep >= step.number 
-//                       ? 'bg-blue-600 border-blue-600 text-white' 
-//                       : 'border-gray-300 text-gray-500'
-//                   }`}>
-//                     {currentStep > step.number ? '✓' : step.number}
-//                   </div>
-//                   <div className="hidden ml-3 sm:block">
-//                     <p className={`text-sm font-medium ${currentStep >= step.number ? 'text-blue-600' : 'text-gray-500'}`}>
-//                       {step.title}
-//                     </p>
-//                     <p className="text-xs text-gray-400">{step.description}</p>
-//                   </div>
-//                   {index < steps.length - 1 && (
-//                     <div className={`hidden sm:block w-20 h-1 mx-4 rounded ${
-//                       currentStep > step.number ? 'bg-blue-600' : 'bg-gray-200'
-//                     }`}></div>
-//                   )}
-//                 </div>
-//               ))}
-//             </div>
-//           </div>
-//         </div>
+                <select
+                  value={filterSubject}
+                  onChange={(e) => setFilterSubject(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="All">All Subjects</option>
+                  {subjects.map(subject => (
+                    <option key={subject} value={subject}>{subject}</option>
+                  ))}
+                </select>
 
-//         {/* Form Content */}
-//         <form onSubmit={handleSubmit}>
-//           <div className="p-8 bg-white border border-gray-100 shadow-lg rounded-xl">
-//             {currentStep === 1 && renderPersonalInfo()}
-//             {currentStep === 2 && renderProfessionalInfo()}
-//             {currentStep === 3 && renderAcademicInfo()}
-//             {currentStep === 4 && renderScheduleInfo()}
-//             {currentStep === 5 && renderReview()}
+                <button
+                  onClick={clearFilters}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
 
-//             {/* Navigation Buttons */}
-//             <div className="flex justify-between pt-6 mt-8 border-t border-gray-200">
-//               <button
-//                 type="button"
-//                 onClick={prevStep}
-//                 disabled={currentStep === 1}
-//                 className={`px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${
-//                   currentStep === 1
-//                     ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-//                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-//                 }`}
-//               >
-//                 Previous
-//               </button>
+        {/* Teachers Table */}
+        <div className="bg-white border rounded-lg shadow-sm">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-xl font-semibold text-gray-900">
+              Teacher Records ({filteredTeachers.length})
+            </h2>
+          </div>
 
-//               {currentStep < 5 ? (
-//                 <button
-//                   type="button"
-//                   onClick={nextStep}
-//                   className="px-6 py-3 font-semibold text-white transition-all duration-200 transform rounded-lg shadow-lg bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 hover:shadow-xl hover:scale-105"
-//                 >
-//                   Next Step
-//                 </button>
-//               ) : (
-//                 <button
-//                   type="submit"
-//                   className="px-8 py-3 font-semibold text-white transition-all duration-200 transform rounded-lg shadow-lg bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 hover:shadow-xl hover:scale-105"
-//                 >
-//                   Submit & Add Teacher
-//                 </button>
-//               )}
-//             </div>
-//           </div>
-//         </form>
-//       </div>
-//     </div>
-//   );
-// }mb-2">Address *</label>
-//         <textarea
-//           name="address"
-//           value={formData.address}
-//           onChange={handleInputChange}
-//           rows="3"
-//           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//           placeholder="Enter complete address"
-//           required
-//         />
-//       </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                    Teacher Details
+                  </th>
+                  <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                    Contact
+                  </th>
+                  <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                    Professional Info
+                  </th>
+                  <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredTeachers.map((teacher, index) => (
+                  <tr key={index} className="hover:bg-gray-50">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center">
+                        <div className="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-full">
+                          <span className="font-semibold text-blue-600">
+                            {teacher.firstName[0]}{teacher.lastName[0]}
+                          </span>
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">
+                            {teacher.firstName} {teacher.lastName}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            ID: {teacher.employeeId}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-gray-900">{teacher.email}</div>
+                      <div className="text-sm text-gray-500">{teacher.phone}</div>
+                      <div className="text-sm text-gray-500">{teacher.city}, {teacher.province}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-gray-900">{teacher.qualification}</div>
+                      <div className="text-sm text-gray-500">{teacher.subjectSpecialization}</div>
+                      <div className="text-sm text-gray-500">
+                        Joined: {new Date(teacher.dateOfJoining).toLocaleDateString()}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        teacher.status === 'Active' 
+                          ? 'bg-green-100 text-green-800'
+                          : teacher.status === 'On Leave'
+                          ? 'bg-yellow-100 text-yellow-800' 
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {teacher.status}
+                      </span>
+                      {teacher.notes && (
+                        <div className="mt-1 text-xs text-gray-500">{teacher.notes}</div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex gap-2">
+                        <button className="p-1 text-gray-500 rounded hover:text-blue-600 hover:bg-blue-50">
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button className="p-1 text-gray-500 rounded hover:text-green-600 hover:bg-green-50">
+                          <Edit className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-//       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-//         <div>
-//           <label className="block mb-2 text-sm font-medium text-gray-700">City *</label>
-//           <input
-//             type="text"
-//             name="city"
-//             value={formData.city}
-//             onChange={handleInputChange}
-//             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//             placeholder="Enter city"
-//             required
-//           />
-//         </div>
-//         <div>
-//           <label className="block mb-2 text-sm font-medium text-gray-700">State/Province *</label>
-//           <input
-//             type="text"
-//             name="state"
-//             value={formData.state}
-//             onChange={handleInputChange}
-//             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//             placeholder="Enter state"
-//             required
-//           />
-//         </div>
-//         <div>
-//           <label className="block mb-2 text-sm font-medium text-gray-700">Zip Code</label>
-//           <input
-//             type="text"
-//             name="zipCode"
-//             value={formData.zipCode}
-//             onChange={handleInputChange}
-//             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//             placeholder="Enter zip code"
-//           />
-//         </div>
-//       </div>
+          {filteredTeachers.length === 0 && (
+            <div className="px-6 py-12 text-center">
+              <div className="text-gray-500">
+                <Filter className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <h3 className="mb-2 text-lg font-medium">No teachers found</h3>
+                <p>Try adjusting your search terms or filters.</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 
-//       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-//         <div>
-//           <label className="block mb-2 text-sm font-medium text-gray-700">Emergency Contact Name</label>
-//           <input
-//             type="text"
-//             name="emergencyContact"
-//             value={formData.emergencyContact}
-//             onChange={handleInputChange}
-//             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//             placeholder="Enter emergency contact name"
-//           />
-//         </div>
-//         <div>
-//           <label className="block mb-2 text-sm font-medium text-gray-700">Emergency Contact Phone</label>
-//           <input
-//             type="tel"
-//             name="emergencyPhone"
-//             value={formData.emergencyPhone}
-//             onChange={handleInputChange}
-//             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//             placeholder="Enter emergency phone"
-//           />
-//         </div>
-//       </div>
-//     </div>
-//   );
-
-//   const renderProfessionalInfo = () => (
-//     <div className="space-y-6">
-//       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-//         <div>
-//           <label className="block mb-2 text-sm font-medium text-gray-700">Employee ID *</label>
-//           <input
-//             type="text"
-//             name="employeeId"
-//             value={formData.employeeId}
-//             onChange={handleInputChange}
-//             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//             placeholder="Enter employee ID"
-//             required
-//           />
-//         </div>
-//         <div>
-//           <label className="block mb-2 text-sm font-medium text-gray-700">Department *</label>
-//           <select
-//             name="department"
-//             value={formData.department}
-//             onChange={handleInputChange}
-//             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//             required
-//           >
-//             <option value="">Select department</option>
-//             <option value="Mathematics">Mathematics</option>
-//             <option value="Science">Science</option>
-//             <option value="English">English</option>
-//             <option value="Social Studies">Social Studies</option>
-//             <option value="Arts">Arts</option>
-//             <option value="Physical Education">Physical Education</option>
-//             <option value="Computer Science">Computer Science</option>
-//           </select>
-//         </div>
-//         <div>
-//           <label className="block mb-2 text-sm font-medium text-gray-700">Position</label>
-//           <input
-//             type="text"
-//             name="position"
-//             value={formData.position}
-//             onChange={handleInputChange}
-//             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//             placeholder="Enter position"
-//           />
-//         </div>
-//         <div>
-//           <label className="block mb-2 text-sm font-medium text-gray-700">Joining Date *</label>
-//           <input
-//             type="date"
-//             name="joiningDate"
-//             value={formData.joiningDate}
-//             onChange={handleInputChange}
-//             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//             required
-//           />
-//         </div>
-//         <div>
-//           <label className="block mb-2 text-sm font-medium text-gray-700">Employment Type *</label>
-//           <select
-//             name="employmentType"
-//             value={formData.employmentType}
-//             onChange={handleInputChange}
-//             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//             required
-//           >
-//             <option value="Full-time">Full-time</option>
-//             <option value="Part-time">Part-time</option>
-//             <option value="Contract">Contract</option>
-//             <option value="Substitute">Substitute</option>
-//           </select>
-//         </div>
-//         <div>
-//           <label className="block mb-2 text-sm font-medium text-gray-700">Salary</label>
-//           <div className="relative">
-//             <DollarSign className="absolute left-3 top-3.5 text-gray-400" size={20} />
-//             <input
-//               type="number"
-//               name="salary"
-//               value={formData.salary}
-//               onChange={handleInputChange}
-//               className="w-full py-3 pr-4 border border-gray-300 rounded-lg pl-11 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//               placeholder="Enter salary"
-//             />
-//           </div>
-//         </div>
-//       </div>
-
-//       {/* Educational Qualifications */}
-//       <div>
-//         <div className="flex items-center justify-between mb-4">
-//           <h3 className="text-lg font-semibold text-gray-800">Educational Qualifications</h3>
-//           <button
-//             type="button"
-//             onClick={addQualification}
-//             className="flex items-center px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700"
-//           >
-//             <Plus size={16} className="mr-2" />
-//             Add Qualification
-//           </button>
-//         </div>
-//         {qualifications.map((qual, index) => (
-//           <div key={index} className="p-4 mb-4 border border-gray-200 rounded-lg">
-//             <div className="flex items-center justify-between mb-3">
-//               <h4 className="font-medium text-gray-700">Qualification {index + 1}</h4>
-//               {qualifications.length > 1 && (
-//                 <button
-//                   type="button"
-//                   onClick={() => removeQualification(index)}
-//                   className="text-red-600 hover:text-red-800"
-//                 >
-//                   <X size={16} />
-//                 </button>
-//               )}
-//             </div>
-//             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-//               <input
-//                 type="text"
-//                 placeholder="Degree/Qualification"
-//                 value={qual.degree}
-//                 onChange={(e) => updateQualification(index, 'degree', e.target.value)}
-//                 className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//               />
-//               <input
-//                 type="text"
-//                 placeholder="Institution/University"
-//                 value={qual.institution}
-//                 onChange={(e) => updateQualification(index, 'institution', e.target.value)}
-//                 className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//               />
-//               <input
-//                 type="text"
-//                 placeholder="Year of completion"
-//                 value={qual.year}
-//                 onChange={(e) => updateQualification(index, 'year', e.target.value)}
-//                 className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//               />
-//               <input
-//                 type="text"
-//                 placeholder="Grade/CGPA"
-//                 value={qual.grade}
-//                 onChange={(e) => updateQualification(index, 'grade', e.target.value)}
-//                 className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//               />
-//             </div>
-//           </div>
-//         ))}
-//       </div>
-
-//       {/* Work Experience */}
-//       <div>
-//         <div className="flex items-center justify-between mb-4">
-//           <h3 className="text-lg font-semibold text-gray-800">Work Experience</h3>
-//           <button
-//             type="button"
-//             onClick={addExperience}
-//             className="flex items-center px-4 py-2 text-white bg-green-600 rounded-lg hover:bg-green-700"
-//           >
-//             <Plus size={16} className="mr-2" />
-//             Add Experience
-//           </button>
-//         </div>
-//         {experience.map((exp, index) => (
-//           <div key={index} className="p-4 mb-4 border border-gray-200 rounded-lg">
-//             <div className="flex items-center justify-between mb-3">
-//               <h4 className="font-medium text-gray-700">Experience {index + 1}</h4>
-//               {experience.length > 1 && (
-//                 <button
-//                   type="button"
-//                   onClick={() => removeExperience(index)}
-//                   className="text-red-600 hover:text-red-800"
-//                 >
-//                   <X size={16} />
-//                 </button>
-//               )}
-//             </div>
-//             <div className="grid grid-cols-1 gap-4 mb-4 md:grid-cols-2">
-//               <input
-//                 type="text"
-//                 placeholder="Position/Job Title"
-//                 value={exp.position}
-//                 onChange={(e) => updateExperience(index, 'position', e.target.value)}
-//                 className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//               />
-//               <input
-//                 type="text"
-//                 placeholder="Company/Institution"
-//                 value={exp.company}
-//                 onChange={(e) => updateExperience(index, 'company', e.target.value)}
-//                 className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//               />
-//             </div>
-//             <div className="mb-4">
-//               <input
-//                 type="text"
-//                 placeholder="Duration (e.g., Jan 2020 - Dec 2022)"
-//                 value={exp.duration}
-//                 onChange={(e) => updateExperience(index, 'duration', e.target.value)}
-//                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//               />
-//             </div>
-//             <textarea
-//               placeholder="Job description and responsibilities"
-//               value={exp.description}
-//               onChange={(e) => updateExperience(index, 'description', e.target.value)}
-//               rows="3"
-//               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//             />
-//           </div>
-//         ))}
-//       </div>
-
-//       {/* Document Upload */}
-//       <div>
-//         <h3 className="mb-4 text-lg font-semibold text-gray-800">Documents</h3>
-//         <div className="p-6 text-center border-2 border-gray-300 border-dashed rounded-lg">
-//           <Upload className="mx-auto mb-4 text-gray-400" size={48} />
-//           <p className="mb-4 text-gray-600">Upload certificates, transcripts, and other documents</p>
-//           <label className="px-6 py-3 text-white bg-blue-600 rounded-lg cursor-pointer hover:bg-blue-700">
-//             Choose Files
-//             <input
-//               type="file"
-//               multiple
-//               onChange={handleDocumentUpload}
-//               className="hidden"
-//               accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-//             />
-//           </label>
-//         </div>
-//         {documents.length > 0 && (
-//           <div className="mt-4 space-y-2">
-//             {documents.map((doc) => (
-//               <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
-//                 <span className="text-sm text-gray-700">{doc.name}</span>
-//                 <button
-//                   type="button"
-//                   onClick={() => removeDocument(doc.id)}
-//                   className="text-red-600 hover:text-red-800"
-//                 >
-//                   <X size={16} />
-//                 </button>
-//               </div>
-//             ))}
-//           </div>
-//         )}
-//       </div>
-//     </div>
-//   );
-
-//   const renderAcademicInfo = () => (
-//     <div className="space-y-6">
-//       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-//         <div>
-//           <label className="block mb-2 text-sm font-medium text-gray-700">Teaching Experience (Years)</label>
-//           <input
-//             type="number"
-//             name="teachingExperience"
-//             value={formData.teachingExperience}
-//             onChange={handleInputChange}
-//             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//             placeholder="Enter years of experience"
-//           />
-//         </div>
-//         <div>
-//           <label className="block mb-2 text-sm font-medium text-gray-700">Marital Status</label>
-//           <select
-//             name="maritalStatus"
-//             value={formData.maritalStatus}
-//             onChange={handleInputChange}
-//             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//           >
-//             <option value="">Select status</option>
-//             <option value="single">Single</option>
-//             <option value="married">Married</option>
-//             <option value="divorced">Divorced</option>
-//             <option value="widowed">Widowed</option>
-//           </select>
-//         </div>
-//       </div>
-
-//       <div>
-//         <h3 className="mb-4 text-lg font-semibold text-gray-800">Teaching Subjects</h3>
-//         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
-//           {subjectsList.map((subject) => (
-//             <label key={subject} className="flex items-center space-x-2 cursor-pointer">
-//               <input
-//                 type="checkbox"
-//                 checked={subjects.includes(subject)}
-//                 onChange={() => toggleSubject(subject)}
-//                 className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-//               />
-//               <span className="text-sm text-gray-700">{subject}</span>
-//             </label>
-//           ))}
-//         </div>
-//         {subjects.length > 0 && (
-//           <div className="mt-4">
-//             <p className="text-sm text-gray-600">Selected subjects:</p>
-//             <div className="flex flex-wrap gap-2 mt-2">
-//               {subjects.map((subject) => (
-//                 <span key={subject} className="px-3 py-1 text-sm text-blue-800 bg-blue-100 rounded-full">
-//                   {subject}
-//                 </span>
-//               ))}
-//             </div>
-//           </div>
-//         )}
-//       </div>
-
-//       <div>
-//         <label className="block mb-2 text-sm font-medium text-gray-700">Biography</label>
-//         <textarea
-//           name="biography"
-//           value={formData.biography}
-//           onChange={handleInputChange}
-//           rows="4"
-//           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//           placeholder="Write a brief biography about the teacher..."
-//         />
-//       </div>
-
-//       <div>
-//         <label className="block mb-2 text-sm font-medium text-gray-700">Achievements & Awards</label>
-//         <textarea
-//           name="achievements"
-//           value={formData.achievements}
-//           onChange={handleInputChange}
-//           rows="3"
-//           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//           placeholder="List any achievements, awards, or recognitions..."
-//         />
-//       </div>
-
-//       <div>
-//         <label className="block text-sm font-medium text-gray-700
+export default TeacherRegistrationPage;

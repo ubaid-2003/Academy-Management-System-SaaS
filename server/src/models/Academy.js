@@ -5,7 +5,7 @@ module.exports = (sequelize, DataTypes) => {
     'Academy',
     {
       id: {
-        type: DataTypes.INTEGER.UNSIGNED, // ✅ Unsigned to match FK
+        type: DataTypes.INTEGER.UNSIGNED, // Unsigned to match FK
         primaryKey: true,
         autoIncrement: true,
       },
@@ -16,7 +16,7 @@ module.exports = (sequelize, DataTypes) => {
       registrationNumber: {
         type: DataTypes.STRING,
         allowNull: false,
-        unique: true,
+        unique: true, // Only one unique index
       },
       status: {
         type: DataTypes.STRING(50),
@@ -36,29 +36,30 @@ module.exports = (sequelize, DataTypes) => {
       totalTeachers: DataTypes.INTEGER,
     },
     {
-      tableName: 'Academies',
+      tableName: 'academies', // use lowercase for table name to match convention
       timestamps: true,
     }
   );
 
   Academy.associate = function (models) {
-    // Many-to-Many with Users (Admin, Teacher)
+    // Academy has many Students
+    Academy.hasMany(models.Student, { foreignKey: 'academyId', as: 'students', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+
+    // Academy has many Teachers
+    Academy.hasMany(models.Teacher, { foreignKey: 'academyId', as: 'teachers', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+
+    // Academy belongs to many Users via UserAcademy
     Academy.belongsToMany(models.User, {
       through: models.UserAcademy,
       as: 'users',
       foreignKey: 'academyId',
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE',
     });
 
-    // Explicitly define Academy -> UserAcademy
-    Academy.hasMany(models.UserAcademy, { foreignKey: 'academyId', as: 'userAcademies' });
-
-    // Academy has many Students
-    Academy.hasMany(models.Student, { foreignKey: 'academyId', as: 'students' });
-
-    // Academy has many Teachers
-    Academy.hasMany(models.Teacher, { foreignKey: 'academyId', as: 'teachers' });
+    // Explicit UserAcademy relation
+    Academy.hasMany(models.UserAcademy, { foreignKey: 'academyId', as: 'userAcademies', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
   };
-
 
   return Academy;
 };
