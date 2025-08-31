@@ -1,8 +1,8 @@
-'use strict';
+"use strict";
 
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('teachers', {
+    await queryInterface.createTable("teachers", {
       id: {
         type: Sequelize.INTEGER.UNSIGNED,
         autoIncrement: true,
@@ -20,6 +20,9 @@ module.exports = {
         type: Sequelize.STRING(120),
         allowNull: false,
         unique: true,
+        validate: {
+          isEmail: true,
+        },
       },
       phone: {
         type: Sequelize.STRING(20),
@@ -30,7 +33,7 @@ module.exports = {
         allowNull: true,
       },
       gender: {
-        type: Sequelize.ENUM('Male', 'Female', 'Other'),
+        type: Sequelize.ENUM("Male", "Female", "Other"),
         allowNull: true,
       },
       address: {
@@ -47,8 +50,8 @@ module.exports = {
       },
       country: {
         type: Sequelize.STRING(50),
-        allowNull: true,
-        defaultValue: 'Pakistan',
+        allowNull: false,
+        defaultValue: "Pakistan",
       },
       qualification: {
         type: Sequelize.STRING(120),
@@ -64,7 +67,7 @@ module.exports = {
       },
       employee_id: {
         type: Sequelize.STRING(50),
-        allowNull: true,
+        allowNull: false,
         unique: true,
       },
       emergency_contact_name: {
@@ -80,8 +83,16 @@ module.exports = {
         allowNull: true,
       },
       status: {
-        type: Sequelize.ENUM('Active', 'Inactive', 'Retired', 'Transferred', 'Resigned'),
-        defaultValue: 'Active',
+        type: Sequelize.ENUM(
+          "Active",
+          "Inactive",
+          "Retired",
+          "Transferred",
+          "Resigned",
+          "On Leave"
+        ),
+        allowNull: false,
+        defaultValue: "Active",
       },
       notes: {
         type: Sequelize.TEXT,
@@ -90,17 +101,30 @@ module.exports = {
       created_at: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
+        defaultValue: Sequelize.literal("CURRENT_TIMESTAMP"),
       },
       updated_at: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'),
+        defaultValue: Sequelize.literal(
+          "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
+        ),
       },
     });
   },
 
-  async down(queryInterface) {
-    await queryInterface.dropTable('teachers');
+  async down(queryInterface, Sequelize) {
+    // First remove ENUMs to prevent Postgres/MySQL ENUM issues
+    await queryInterface.sequelize.transaction(async (transaction) => {
+      await queryInterface.dropTable("teachers", { transaction });
+      await queryInterface.sequelize.query(
+        'DROP TYPE IF EXISTS "enum_teachers_gender";',
+        { transaction }
+      );
+      await queryInterface.sequelize.query(
+        'DROP TYPE IF EXISTS "enum_teachers_status";',
+        { transaction }
+      );
+    });
   },
 };

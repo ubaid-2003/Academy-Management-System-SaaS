@@ -199,6 +199,56 @@ const refreshToken = (req, res) => {
   }
 };
 
+// GET /api/academies/current
+const getCurrentAcademy = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Fetch the default academy (first academy assigned to the user)
+    const userAcademy = await UserAcademy.findOne({
+      where: { userId },
+      include: [
+        {
+          model: Academy,
+          as: "academy",
+        },
+      ],
+      order: [["createdAt", "ASC"]],
+    });
+
+    if (!userAcademy) {
+      return res.status(404).json({ message: "No academy assigned to this user" });
+    }
+
+    res.json({ academy: userAcademy.academy, role: userAcademy.role });
+  } catch (err) {
+    console.error("GetCurrentAcademy error:", err);
+    res.status(500).json({ message: "Server error fetching current academy", error: err.message });
+  }
+};
+// POST /api/academies/switch
+const switchAcademy = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { academyId } = req.body;
+
+    // Check if the user belongs to the academy
+    const userAcademy = await UserAcademy.findOne({
+      where: { userId, academyId },
+      include: [{ model: Academy, as: "academy" }],
+    });
+
+    if (!userAcademy) {
+      return res.status(403).json({ message: "You are not allowed to access this academy" });
+    }
+
+    res.json({ academy: userAcademy.academy, role: userAcademy.role });
+  } catch (err) {
+    console.error("SwitchAcademy error:", err);
+    res.status(500).json({ message: "Server error switching academy", error: err.message });
+  }
+};
+
 module.exports = {
   createAcademy,
   getUserAcademies,
@@ -206,4 +256,6 @@ module.exports = {
   updateAcademy,
   deleteAcademy,
   refreshToken,
+  getCurrentAcademy,   // 🔹 new
+  switchAcademy,       // 🔹 new
 };

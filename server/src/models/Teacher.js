@@ -1,7 +1,8 @@
-'use strict';
+"use strict";
+
 module.exports = (sequelize, DataTypes) => {
   const Teacher = sequelize.define(
-    'Teacher',
+    "Teacher",
     {
       id: {
         type: DataTypes.INTEGER.UNSIGNED,
@@ -11,10 +12,12 @@ module.exports = (sequelize, DataTypes) => {
       firstName: {
         type: DataTypes.STRING(80),
         allowNull: false,
+        field: "first_name",
       },
       lastName: {
         type: DataTypes.STRING(80),
         allowNull: false,
+        field: "last_name",
       },
       email: {
         type: DataTypes.STRING(120),
@@ -29,9 +32,10 @@ module.exports = (sequelize, DataTypes) => {
       dateOfBirth: {
         type: DataTypes.DATEONLY,
         allowNull: true,
+        field: "date_of_birth",
       },
       gender: {
-        type: DataTypes.ENUM('Male', 'Female', 'Other'),
+        type: DataTypes.ENUM("Male", "Female", "Other"),
         allowNull: true,
       },
       address: {
@@ -48,8 +52,8 @@ module.exports = (sequelize, DataTypes) => {
       },
       country: {
         type: DataTypes.STRING(50),
-        allowNull: true,
-        defaultValue: 'Pakistan',
+        allowNull: false,
+        defaultValue: "Pakistan",
       },
       qualification: {
         type: DataTypes.STRING(120),
@@ -58,31 +62,45 @@ module.exports = (sequelize, DataTypes) => {
       subjectSpecialization: {
         type: DataTypes.STRING(120),
         allowNull: true,
+        field: "subject_specialization",
       },
       dateOfJoining: {
         type: DataTypes.DATEONLY,
         allowNull: true,
+        field: "date_of_joining",
       },
       employeeId: {
         type: DataTypes.STRING(50),
-        allowNull: true,
+        allowNull: false,
         unique: true,
+        field: "employee_id",
       },
       emergencyContactName: {
         type: DataTypes.STRING(100),
         allowNull: true,
+        field: "emergency_contact_name",
       },
       emergencyContactPhone: {
         type: DataTypes.STRING(20),
         allowNull: true,
+        field: "emergency_contact_phone",
       },
       bloodGroup: {
         type: DataTypes.STRING(5),
         allowNull: true,
+        field: "blood_group",
       },
       status: {
-        type: DataTypes.ENUM('Active', 'Inactive', 'Retired', 'Transferred', 'Resigned'),
-        defaultValue: 'Active',
+        type: DataTypes.ENUM(
+          "Active",
+          "Inactive",
+          "Retired",
+          "Transferred",
+          "Resigned",
+          "On Leave"
+        ),
+        allowNull: false,
+        defaultValue: "Active",
       },
       notes: {
         type: DataTypes.TEXT,
@@ -90,9 +108,9 @@ module.exports = (sequelize, DataTypes) => {
       },
     },
     {
-      tableName: 'teachers',
+      tableName: "teachers",
       timestamps: true,
-      underscored: true,
+      underscored: true, // converts camelCase → snake_case in DB
     }
   );
 
@@ -100,9 +118,9 @@ module.exports = (sequelize, DataTypes) => {
     // Many-to-Many with Student via TeacherStudent
     Teacher.belongsToMany(models.Student, {
       through: models.TeacherStudent,
-      foreignKey: 'teacherId',
-      otherKey: 'studentId',
-      as: 'students',
+      foreignKey: "teacher_id",
+      otherKey: "student_id",
+      as: "students",
     });
   };
 

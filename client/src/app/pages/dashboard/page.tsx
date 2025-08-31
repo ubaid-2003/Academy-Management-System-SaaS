@@ -1,14 +1,14 @@
 'use client';
 
 import DashboardLayout from "../../components/DashboardLayout";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from "next/navigation";
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  Users, 
-  GraduationCap, 
-  CheckCircle, 
+import {
+  TrendingUp,
+  TrendingDown,
+  Users,
+  GraduationCap,
+  CheckCircle,
   PauseCircle,
   BookOpen,
   BarChart3,
@@ -23,12 +23,40 @@ export default function DashboardPage() {
   const router = useRouter();
 
   const [stats, setStats] = useState({
-    academies: 12,
-    users: 58,
-    activeAcademies: 10,
-    inactiveAcademies: 2
+    academies: 0,
+    users: 0,
+    activeAcademies: 0,
+    inactiveAcademies: 0
   });
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
 
+        const res = await fetch("http://localhost:5000/api/academies/user", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (!res.ok) throw new Error(await res.text());
+        const academies = await res.json();
+
+        const active = academies.filter((a: any) => a.status === "Active").length;
+        const inactive = academies.filter((a: any) => a.status === "Inactive").length;
+
+        setStats({
+          academies: academies.length,
+          users: 1, // since jo login krta hy wohi user hota hy
+          activeAcademies: active,
+          inactiveAcademies: inactive,
+        });
+      } catch (err) {
+        console.error("Error fetching stats:", err);
+      }
+    };
+
+    fetchStats();
+  }, []);
   // Enhanced quick actions with proper icons
   const quickActions = [
     { name: 'Create Course', icon: BookOpen, description: 'Add a new course to curriculum', color: 'bg-blue-500' },
@@ -244,7 +272,7 @@ export default function DashboardPage() {
                   <div className="h-full transition-all duration-1000 ease-out rounded-full bg-gradient-to-r from-blue-500 to-blue-600" style={{ width: '78%' }}></div>
                 </div>
               </div>
-              
+
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium text-slate-700">Course Completion</span>
@@ -254,7 +282,7 @@ export default function DashboardPage() {
                   <div className="h-full transition-all duration-1000 ease-out rounded-full bg-gradient-to-r from-green-500 to-green-600" style={{ width: '92%' }}></div>
                 </div>
               </div>
-              
+
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium text-slate-700">Resource Utilization</span>
@@ -264,7 +292,7 @@ export default function DashboardPage() {
                   <div className="h-full transition-all duration-1000 ease-out rounded-full bg-gradient-to-r from-purple-500 to-purple-600" style={{ width: '65%' }}></div>
                 </div>
               </div>
-              
+
               <div className="pt-4 border-t border-slate-100">
                 <div className="flex items-center justify-between p-4 border border-green-200 rounded-xl bg-gradient-to-r from-green-50 to-emerald-50">
                   <div className="flex items-center">

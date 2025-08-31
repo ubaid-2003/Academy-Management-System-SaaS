@@ -109,11 +109,11 @@ exports.updateTeacher = async (req, res) => {
 
     const { studentIds, ...teacherData } = req.body;
 
-    await teacher.update(teacherData, { transaction: t });
+    // 🔥 Update only fields provided (avoid overwriting with undefined)
+    await teacher.update(teacherData, { transaction: t, fields: Object.keys(teacherData) });
 
-    // Update student assignments if provided
     if (Array.isArray(studentIds)) {
-      await teacher.setStudents(studentIds, { transaction: t }); // replaces old links
+      await teacher.setStudents(studentIds, { transaction: t });
     }
 
     await t.commit();
@@ -121,9 +121,13 @@ exports.updateTeacher = async (req, res) => {
   } catch (err) {
     await t.rollback();
     console.error("UpdateTeacher error:", err);
-    return res.status(400).json({ message: "Error updating teacher", error: err.message });
+    return res.status(400).json({
+      message: "Error updating teacher",
+      error: err.message || err,
+    });
   }
 };
+
 
 // ==================== DELETE TEACHER ====================
 exports.deleteTeacher = async (req, res) => {

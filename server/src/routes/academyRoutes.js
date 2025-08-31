@@ -1,11 +1,13 @@
 const router = require("express").Router();
-const { authMiddleware, adminAuth } = require("../middleware/authMiddleware"); // Correct import
+const { authMiddleware, adminAuth } = require("../middleware/authMiddleware");
 const {
   createAcademy,
   getUserAcademies,
   getAcademyById,
   updateAcademy,
   deleteAcademy,
+  getCurrentAcademy,   // 🔹 new
+  switchAcademy,       // 🔹 new
 } = require("../controllers/academyController");
 
 // ==================== CRUD Routes ====================
@@ -24,5 +26,13 @@ router.put("/:id", authMiddleware, adminAuth, updateAcademy);
 
 // DELETE academy by ID
 router.delete("/:id", authMiddleware, adminAuth, deleteAcademy);
+
+// ==================== NEW SWITCHER ROUTES ====================
+
+// GET the current/default academy for logged-in user
+router.get("/current/default", authMiddleware, adminAuth, getCurrentAcademy);
+
+// SWITCH to another academy
+router.post("/switch", authMiddleware, adminAuth, switchAcademy);
 
 module.exports = router;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter, usePathname} from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 import {
     Home,
@@ -62,8 +62,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         { label: "Dashboard", href: "/pages/dashboard", icon: Home },
         { label: "Academies", href: "/pages/academy-admin/academies", icon: GraduationCap },
         { label: "Add Academy", href: "/pages/academy-admin/add-academy", icon: GraduationCap },
-        { label: "Teachers", href: "#", icon: Users },
-        { label: "Students", href: "#", icon: Users },
+        { label: "Teachers", href: "/pages/academy-admin/add-teachers", icon: Users },
+        { label: "Students", href: "/pages/academy-admin/add-students", icon: Users },
         { label: "Analytics", href: "#", icon: BarChart },
         { label: "About Us", href: "#", icon: Info },
         { label: "Settings", href: "#", icon: Settings },
@@ -252,22 +252,19 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                                             <button
                                                 key={academy.id}
                                                 onClick={() => handleAcademySwitch(academy)}
-                                                className={`w-full flex items-center space-x-3 px-3 py-3 rounded-lg transition-all duration-200 text-left ${
-                                                    currentAcademy.id === academy.id 
-                                                        ? "bg-blue-50 text-blue-700 border border-blue-200" 
-                                                        : "hover:bg-slate-50 text-slate-700"
-                                                }`}
+                                                className={`w-full flex items-center space-x-3 px-3 py-3 rounded-lg transition-all duration-200 text-left ${currentAcademy.id === academy.id
+                                                    ? "bg-blue-50 text-blue-700 border border-blue-200"
+                                                    : "hover:bg-slate-50 text-slate-700"
+                                                    }`}
                                             >
-                                                <div className={`flex items-center justify-center w-8 h-8 rounded-lg ${
-                                                    currentAcademy.id === academy.id 
-                                                        ? "bg-blue-100" 
-                                                        : "bg-slate-100"
-                                                }`}>
-                                                    <Building2 className={`w-4 h-4 ${
-                                                        currentAcademy.id === academy.id 
-                                                            ? "text-blue-600" 
-                                                            : "text-slate-500"
-                                                    }`} />
+                                                <div className={`flex items-center justify-center w-8 h-8 rounded-lg ${currentAcademy.id === academy.id
+                                                    ? "bg-blue-100"
+                                                    : "bg-slate-100"
+                                                    }`}>
+                                                    <Building2 className={`w-4 h-4 ${currentAcademy.id === academy.id
+                                                        ? "text-blue-600"
+                                                        : "text-slate-500"
+                                                        }`} />
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <div className="font-semibold truncate">{academy.name}</div>
