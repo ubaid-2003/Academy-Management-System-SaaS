@@ -6,33 +6,36 @@ const {
   getAcademyById,
   updateAcademy,
   deleteAcademy,
-  getCurrentAcademy,   // 🔹 new
-  switchAcademy,       // 🔹 new
+  switchAcademy,
+  getAllAcademies
 } = require("../controllers/academyController");
 
-// ==================== CRUD Routes ====================
+// ==================== ACADEMY ROUTES ====================
 
-// CREATE a new academy
-router.post("/", authMiddleware, adminAuth, createAcademy);
+// GET all academies (Admin or logged-in users)
+router.get("/", authMiddleware, getAllAcademies);
 
 // GET all academies for logged-in user
-router.get("/user", authMiddleware, adminAuth, getUserAcademies);
+router.get("/user", authMiddleware, getUserAcademies);
 
 // GET single academy by ID
-router.get("/:id", authMiddleware, adminAuth, getAcademyById);
+router.get("/:id", authMiddleware, getAcademyById);
 
-// UPDATE academy by ID
+// CREATE a new academy (Admin only)
+router.post("/", authMiddleware, adminAuth, createAcademy);
+
+// UPDATE academy by ID (Admin only)
 router.put("/:id", authMiddleware, adminAuth, updateAcademy);
 
-// DELETE academy by ID
+// DELETE academy by ID (Admin only)
 router.delete("/:id", authMiddleware, adminAuth, deleteAcademy);
 
-// ==================== NEW SWITCHER ROUTES ====================
+// ==================== SWITCHER ROUTES ====================
 
-// GET the current/default academy for logged-in user
-router.get("/current/default", authMiddleware, adminAuth, getCurrentAcademy);
+// Default switch to first academy
+router.post("/switch", authMiddleware, switchAcademy);
 
-// SWITCH to another academy
-router.post("/switch", authMiddleware, adminAuth, switchAcademy);
+// Switch to a specific academy by ID
+router.post("/switch/:academyId", authMiddleware, switchAcademy);
 
 module.exports = router;

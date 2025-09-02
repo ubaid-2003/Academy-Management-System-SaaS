@@ -1,6 +1,9 @@
 'use strict';
 
 module.exports = {
+  // ⚠ Disable automatic transaction to avoid FK issues
+  migrationDisableTransaction: true,
+
   async up(queryInterface, Sequelize) {
     await queryInterface.createTable('UserPermissions', {
       id: {
@@ -12,9 +15,9 @@ module.exports = {
       userId: {
         type: Sequelize.INTEGER.UNSIGNED,
         allowNull: false,
-        references: {
-          model: 'Users',
-          key: 'id'
+        references: { 
+          model: 'Users',  // Must match the table name exactly
+          key: 'id' 
         },
         onUpdate: 'CASCADE',
         onDelete: 'CASCADE'
@@ -31,7 +34,7 @@ module.exports = {
       updatedAt: {
         allowNull: false,
         type: Sequelize.DATE,
-        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP')
       }
     });
   },

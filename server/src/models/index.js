@@ -1,5 +1,4 @@
 'use strict';
-
 const fs = require('fs');
 const path = require('path');
 const Sequelize = require('sequelize');
@@ -17,25 +16,30 @@ if (config.use_env_variable) {
 }
 
 // Import all models dynamically
-fs
-  .readdirSync(__dirname)
-  .filter(file => file.indexOf('.') !== 0 && file !== basename && file.slice(-3) === '.js')
-  .forEach(file => {
+fs.readdirSync(__dirname)
+  .filter((file) => file.indexOf('.') !== 0 && file !== basename && file.slice(-3) === '.js')
+  .forEach((file) => {
     const model = require(path.join(__dirname, file))(sequelize, Sequelize.DataTypes);
     db[model.name] = model;
   });
 
-// Setup associations for models that define `associate` method
-Object.keys(db).forEach(modelName => {
-  if (db[modelName].associate) {
-    db[modelName].associate(db);
-  }
+// Setup associations after all models are loaded
+Object.keys(db).forEach((modelName) => {
+  if (db[modelName].associate) db[modelName].associate(db);
 });
 
-// Manually setup many-to-many association for Teacher ↔ Student via junction table
+// Optional: Teacher ↔ Student many-to-many (if you have TeacherStudent model)
 if (db.Teacher && db.Student && db.TeacherStudent) {
-  db.Teacher.belongsToMany(db.Student, { through: db.TeacherStudent, foreignKey: 'teacherId' });
-  db.Student.belongsToMany(db.Teacher, { through: db.TeacherStudent, foreignKey: 'studentId' });
+  db.Teacher.belongsToMany(db.Student, {
+    through: db.TeacherStudent,
+    foreignKey: 'teacherId',
+    otherKey: 'studentId',
+  });
+  db.Student.belongsToMany(db.Teacher, {
+    through: db.TeacherStudent,
+    foreignKey: 'studentId',
+    otherKey: 'teacherId',
+  });
 }
 
 db.sequelize = sequelize;

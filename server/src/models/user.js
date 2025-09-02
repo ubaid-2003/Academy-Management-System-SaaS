@@ -1,42 +1,31 @@
 'use strict';
-
 module.exports = (sequelize, DataTypes) => {
-  const User = sequelize.define('User', {
-    fullName: {
-      type: DataTypes.STRING,
-      allowNull: false,
+  const User = sequelize.define(
+    'User',
+    {
+      id: { type: DataTypes.INTEGER.UNSIGNED, primaryKey: true, autoIncrement: true },
+      fullName: { type: DataTypes.STRING, allowNull: false },
+      email: { type: DataTypes.STRING, allowNull: false, unique: true },
+      password: { type: DataTypes.STRING, allowNull: false },
+      role: { type: DataTypes.ENUM('User', 'Admin', 'SuperAdmin', 'Student', 'Teacher'), defaultValue: 'Student' },
     },
-    email: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      unique: true,
-    },
-    password: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    role: {
-      type: DataTypes.ENUM("User", "Admin", "SuperAdmin", "Student", "Teacher"),
-      defaultValue: "User",
-    },
-  }, {
-    tableName: 'Users',
-    timestamps: true,
-  });
+    {
+      tableName: 'users',
+      timestamps: true,
+    }
+  );
 
   User.associate = function (models) {
-    // Many-to-Many with Academy through UserAcademy
+    // Many-to-many with Academy
     User.belongsToMany(models.Academy, {
       through: models.UserAcademy,
-      as: 'academies',         // This alias is used when including academies
+      as: 'academies',
       foreignKey: 'userId',
+      otherKey: 'academyId',
     });
 
-    // Direct relation to UserAcademy for querying role or join table info
-    User.hasMany(models.UserAcademy, {
-      as: 'userAcademies',     // This alias must match your include in queries
-      foreignKey: 'userId',
-    });
+    // One-to-many with UserAcademy
+    User.hasMany(models.UserAcademy, { as: 'userAcademies', foreignKey: 'userId' });
   };
 
   return User;

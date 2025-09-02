@@ -1,64 +1,40 @@
 'use strict';
-
 module.exports = (sequelize, DataTypes) => {
   const Academy = sequelize.define(
     'Academy',
     {
-      id: {
-        type: DataTypes.INTEGER.UNSIGNED, // Unsigned to match FK
-        primaryKey: true,
-        autoIncrement: true,
-      },
-      name: {
-        type: DataTypes.STRING,
-        allowNull: false,
-      },
-      registrationNumber: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        unique: true, // Only one unique index
-      },
-      status: {
-        type: DataTypes.STRING(50),
-        defaultValue: 'Active',
-      },
+      id: { type: DataTypes.INTEGER.UNSIGNED, primaryKey: true, autoIncrement: true },
+      name: { type: DataTypes.STRING, allowNull: false },
+      registrationNumber: { type: DataTypes.STRING, allowNull: false, unique: true },
       address: DataTypes.STRING,
       city: DataTypes.STRING,
       province: DataTypes.STRING,
-      country: {
-        type: DataTypes.STRING,
-        defaultValue: 'Pakistan',
-      },
+      country: { type: DataTypes.STRING, defaultValue: 'Pakistan' },
       email: DataTypes.STRING,
       phone: DataTypes.STRING,
       principalName: DataTypes.STRING,
-      totalStudents: DataTypes.INTEGER,
-      totalTeachers: DataTypes.INTEGER,
+      totalStudents: DataTypes.INTEGER.UNSIGNED,
+      status: { type: DataTypes.ENUM('Active','Inactive','Pending'), defaultValue: 'Pending' },
+      facilities: DataTypes.TEXT,
+      notes: DataTypes.TEXT,
     },
     {
-      tableName: 'academies', // use lowercase for table name to match convention
+      tableName: 'academies',
       timestamps: true,
     }
   );
 
-  Academy.associate = function (models) {
-    // Academy has many Students
-    Academy.hasMany(models.Student, { foreignKey: 'academyId', as: 'students', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
-
-    // Academy has many Teachers
-    Academy.hasMany(models.Teacher, { foreignKey: 'academyId', as: 'teachers', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
-
-    // Academy belongs to many Users via UserAcademy
+  Academy.associate = function(models) {
+    // Many-to-many with User
     Academy.belongsToMany(models.User, {
       through: models.UserAcademy,
       as: 'users',
       foreignKey: 'academyId',
-      onDelete: 'CASCADE',
-      onUpdate: 'CASCADE',
+      otherKey: 'userId',
     });
 
-    // Explicit UserAcademy relation
-    Academy.hasMany(models.UserAcademy, { foreignKey: 'academyId', as: 'userAcademies', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+    // One-to-many with UserAcademy
+    Academy.hasMany(models.UserAcademy, { as: 'userAcademies', foreignKey: 'academyId' });
   };
 
   return Academy;

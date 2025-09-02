@@ -1,13 +1,13 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const { User, UserAcademy, UserPermission, Academy } = require("../models");
+const { User, UserAcademy, UserPermission } = require("../models");
 const { getPermissionsForRole } = require("../utils/permissions");
 
 // ==================== REGISTER ====================
 const register = async (req, res) => {
   try {
     const { fullName, email, password } = req.body;
-    const role = "Admin"; // default
+    const role = "Admin"; // default role: Academy Admin
 
     if (!fullName || !email || !password)
       return res.status(400).json({ message: "All fields required" });
@@ -25,7 +25,7 @@ const register = async (req, res) => {
       isSuperAdmin: false,
     });
 
-    // assign default permissions
+    // Assign default permissions
     const permissions = getPermissionsForRole(role);
     const permRecords = permissions.map((p) => ({
       userId: user.id,
@@ -55,38 +55,29 @@ const login = async (req, res) => {
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) return res.status(401).json({ message: "Invalid credentials" });
 
-    // fetch academies linked
-    const userAcademies = await UserAcademy.findAll({
-      where: { userId: user.id },
-      attributes: ["academyId"],
-    });
+    // Fetch user's academies
+    const userAcademies = await UserAcademy.findAll({ where: { userId: user.id } });
     const academyIds = userAcademies.map((ua) => ua.academyId);
 
-    // set defaultAcademyId
-    let defaultAcademyId = 1;
-    if (!academyIds.includes(1)) {
-      defaultAcademyId = academyIds.length ? academyIds[0] : null;
-    }
+    // Set default active academy (first created)
+    const activeAcademyId = academyIds[0] || null;
 
-    // permissions
-    let permissions = [];
-    if (user.role === "SuperAdmin") {
-      permissions = ["all_permissions"];
-    } else {
-      const userPerms = await UserPermission.findAll({
-        where: { userId: user.id },
-        attributes: ["permissionName"],
-      });
-      permissions = userPerms.map((p) => p.permissionName);
-    }
+    // Fetch permissions for Admin (no SuperAdmin logic)
+    const userPerms = await UserPermission.findAll({
+      where: { userId: user.id },
+      attributes: ["permissionName"],
+    });
+    const permissions = userPerms.map((p) => p.permissionName);
 
+    // Sign JWT
     const token = jwt.sign(
       {
         id: user.id,
         email: user.email,
-        role: user.role,
+        role: user.role, // Only Admin role here
         academyIds,
-        activeAcademyId: defaultAcademyId,
+        activeAcademyId,
+        permissions,
       },
       process.env.JWT_SECRET,
       { expiresIn: "1d" }
@@ -97,11 +88,11 @@ const login = async (req, res) => {
       token,
       user: {
         id: user.id,
-        fullName: user.fullName,
+        fullName: user.fullName || user.email,
         email: user.email,
         role: user.role,
         academyIds,
-        activeAcademyId: defaultAcademyId,
+        activeAcademyId,
       },
       permissions,
     });
@@ -110,6 +101,7 @@ const login = async (req, res) => {
     res.status(500).json({ message: "Server error during login" });
   }
 };
+
 
 // ==================== LOGOUT ====================
 const logout = (req, res) => {

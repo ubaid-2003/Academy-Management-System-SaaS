@@ -34,21 +34,37 @@ export default function LoginPage() {
         body: JSON.stringify(form),
       });
 
+      const data = await res.json();
 
-       const data = await res.json();
-        const loggedUser = {
-          name: data.user.fullName,
-          email: data.user.email,
-          role: data.user.role,
-          avatar: data.user.avatar || "",
-        };
-
-        setUser(loggedUser);
-        localStorage.setItem("user", JSON.stringify(loggedUser));
-        localStorage.setItem("token", data.token); // ✅ store JWT for auth
+      if (!data.user) {
         setMessage(data.message || 'Invalid credentials');
-        router.push('/pages/dashboard');
-      
+        return;
+      }
+
+      // ❌ Reject anyone who is not Admin
+      if (data.user.role !== 'Admin') {
+        setMessage('Access denied: Only Admins can log in.');
+        return;
+      }
+
+      const loggedUser = {
+        id: data.user.id,              // Added user ID
+        fullName: data.user.fullName,  // Corrected property name
+        email: data.user.email,
+        role: data.user.role,
+        avatar: data.user.avatar || '',
+        token: data.token,
+        activeAcademyId: data.user.activeAcademyId,
+        academyIds: data.user.academyIds,
+      };
+
+      setUser(loggedUser);
+      localStorage.setItem("user", JSON.stringify(loggedUser));
+      localStorage.setItem("token", data.token);
+
+      router.push('/pages/dashboard');
+
+
     } catch (err) {
       console.error(err);
       setMessage('Server error, please try again.');
@@ -56,6 +72,7 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-blue-50 to-white">

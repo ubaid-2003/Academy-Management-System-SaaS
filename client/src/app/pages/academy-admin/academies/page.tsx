@@ -51,6 +51,7 @@ export default function AcademiesPage() {
 
   const router = useRouter();
 
+  const [displayAcademies, setDisplayAcademies] = useState<Academy[]>([]);
   const [academies, setAcademies] = useState<Academy[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -65,42 +66,38 @@ export default function AcademiesPage() {
   const [academyToDelete, setAcademyToDelete] = useState<Academy | null>(null);
   const [editFormData, setEditFormData] = useState<Partial<Academy>>({});
 
-  useEffect(() => {
-    const fetchAcademies = async () => {
-      setLoading(true);
-      try {
-        const token = localStorage.getItem("token");
-        if (!token) throw new Error("You must be logged in.");
-
-        const res = await fetch("http://localhost:5000/api/academies/user", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (!res.ok) throw new Error(await res.text());
-        const data = await res.json();
-        if (Array.isArray(data)) setAcademies(data);
-        else setError("No academies created yet.");
-      } catch (err: any) {
-        setError(err.message || "Failed to fetch academies");
-      } finally {
-        setLoading(false);
+useEffect(() => {
+  const fetchAcademies = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch("http://localhost:5000/api/academies/user", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Failed to fetch academies");
+      const data: Academy[] = await res.json();
+      setAcademies(data);
+      if (data.length > 0) {
+        setSelectedAcademy(data[0]); // <-- Default to first academy
       }
-    };
-    fetchAcademies();
-  }, []);
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || "Failed to update academy");
+    } finally {
+      setLoading(false);
+    }
+  };
+  fetchAcademies();
+}, []);
 
+  const filteredAcademies = academies.filter((a) =>
+    [a.name, a.city, a.registrationNumber]
+      .map((field) => (field || "").toLowerCase().trim())
+      .some((field) => field.includes(searchTerm.toLowerCase().trim()))
+  );
 
-const filteredAcademies = academies.filter(
-  (a) =>
-    (a.name?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-    (a.city?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-    (a.registrationNumber?.toLowerCase() || "").includes(searchTerm.toLowerCase())
-);
-
-const closeModals = () => {
-  setIsDeleteModalOpen(false);
-  setAcademyToDelete(null); // reset selection
-};
+  const closeModals = () => {
+    setIsDeleteModalOpen(false);
+    setAcademyToDelete(null); // reset selection
+  };
 
   const handleView = (academy: Academy) => {
     setSelectedAcademy(academy);
@@ -123,31 +120,31 @@ const closeModals = () => {
   const handleClick = () => {
     router.push("/pages/academy-admin/add-academy");
   };
-const handleConfirmDelete = async () => {
-  if (!academyToDelete) return;
-  try {
-    const token = localStorage.getItem("token");
-    if (!token) throw new Error("Not authorized");
+  const handleConfirmDelete = async () => {
+    if (!academyToDelete) return;
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Not authorized");
 
-    await axios.delete(
-      `http://localhost:5000/api/academies/${academyToDelete.id}`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
+      await axios.delete(
+        `http://localhost:5000/api/academies/${academyToDelete.id}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
-    // Remove deleted academy from state
-    setAcademies(prev => prev.filter(a => a.id !== academyToDelete.id));
-    closeModals();
-  } catch (err: any) {
-    alert(err.response?.data?.message || err.message || "Failed to delete");
-  }
-};
+      // Remove deleted academy from state
+      setAcademies(prev => prev.filter(a => a.id !== academyToDelete.id));
+      closeModals();
+    } catch (err: any) {
+      alert(err.response?.data?.message || err.message || "Failed to delete");
+    }
+  };
 
 
   const getRoleBadgeColor = (role: string) => {
     switch (role.toLowerCase()) {
       case "admin":
         return "bg-gradient-to-r from-red-50 to-red-100 text-red-700 border-red-200";
-      case "owner":
+      case "Admin":
         return "bg-gradient-to-r from-purple-50 to-purple-100 text-purple-700 border-purple-200";
       case "teacher":
         return "bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 border-blue-200";
@@ -157,9 +154,9 @@ const handleConfirmDelete = async () => {
         return "bg-gradient-to-r from-slate-50 to-slate-100 text-slate-700 border-slate-200";
     }
   };
-const handleEditFormChange = (field: keyof Academy, value: any) => {
-  setEditFormData(prev => ({ ...prev, [field]: value }));
-};
+  const handleEditFormChange = (field: keyof Academy, value: any) => {
+    setEditFormData(prev => ({ ...prev, [field]: value }));
+  };
 
 
   const handleEditFormSubmit = async () => {
@@ -382,12 +379,10 @@ const handleEditFormChange = (field: keyof Academy, value: any) => {
 
                     <div className="mb-4 space-y-3">
                       {/* Role Badge */}
-                      <span
-                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${getRoleBadgeColor(userRole)}`}
-                      >
-                        <User className="w-3 h-3 mr-1" />
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${getRoleBadgeColor(userRole)}`}>
                         {userRole}
                       </span>
+
 
                       {/* Status Badge */}
                       <div className="flex items-center space-x-2">

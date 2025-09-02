@@ -38,7 +38,7 @@ const authMiddleware = async (req, res, next) => {
 };
 
 // ==================== ADMIN CHECK ====================
-// Whoever has role 'admin' or 'superadmin' (case-insensitive) is treated as admin
+// Only users with role 'admin' (case-insensitive) are treated as admins
 const adminAuth = (req, res, next) => {
   try {
     if (!req.user) {
@@ -46,7 +46,7 @@ const adminAuth = (req, res, next) => {
     }
 
     const role = String(req.user.role || "").toLowerCase();
-    if (!["admin", "superadmin"].includes(role)) {
+    if (role !== "admin") {
       return res.status(403).json({ message: "Access denied: Admins only" });
     }
 
@@ -66,13 +66,8 @@ const requirePermission = (permission) => async (req, res, next) => {
 
     const role = String(req.user.role || "").toLowerCase();
 
-    // superadmin bypasses all permission checks
-    if (role === "superadmin") {
-      return next();
-    }
-
-    // if user has permission explicitly
-    if (req.user.permissions && req.user.permissions.some(p => p.permissionName === permission)) {
+    // Only Admin role is considered
+    if (role === "admin" && req.user.permissions && req.user.permissions.some(p => p.permissionName === permission)) {
       return next();
     }
 

@@ -1,11 +1,20 @@
-const { Academy, User, sequelize } = require("../models");
+const { Academy, User, UserAcademy, UserPermission, sequelize } = require("../models");
 const jwt = require("jsonwebtoken");
-const { UserAcademy } = require("../models"); // make sure UserAcademy is exported in models/index.js
 
 // ==================== CREATE ACADEMY ====================
 const createAcademy = async (req, res) => {
   const t = await sequelize.transaction();
   try {
+    const userId = req.user?.id;
+    const role = req.user?.role;
+
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+    // Only Admin (Academy Admin) can create academies
+    if (role !== "Admin") {
+      return res.status(403).json({ message: "Only Admins can create academies" });
+    }
+
     const {
       name,
       registrationNumber,
@@ -17,89 +26,96 @@ const createAcademy = async (req, res) => {
       phone,
       principalName,
       totalStudents,
-      facilities,
       status,
+      facilities,
       notes,
     } = req.body;
 
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ message: "Unauthorized: user not found" });
-
-    // Validate required fields
-    const requiredFields = {
-      name,
-      registrationNumber,
-      address,
-      city,
-      province,
-      country,
-      email,
-      phone,
-      principalName,
-      totalStudents,
-      facilities,
-      status,
-      notes,
-    };
-    for (const [key, value] of Object.entries(requiredFields)) {
-      if (!value) {
-        await t.rollback();
-        return res.status(400).json({ message: `${key} is required` });
-      }
+    // Required fields validation
+    if (!name || !registrationNumber || !status || !principalName || !totalStudents) {
+      return res.status(400).json({
+        message:
+          "name, registrationNumber, status, principalName, and totalStudents are required",
+      });
     }
 
     // Validate status
     const validStatuses = ["Active", "Inactive", "Pending"];
     if (!validStatuses.includes(status)) {
-      await t.rollback();
-      return res.status(400).json({ message: `Invalid status. Must be one of ${validStatuses.join(", ")}` });
+      return res
+        .status(400)
+        .json({ message: `Invalid status. Must be one of ${validStatuses.join(", ")}` });
     }
 
-    // Create academy
+    // Create the academy
     const academy = await Academy.create(
-      { name, registrationNumber, address, city, province, country, email, phone, principalName, totalStudents, facilities, status, notes },
+      {
+        name,
+        registrationNumber,
+        address,
+        city,
+        province,
+        country: country || "Pakistan",
+        email,
+        phone,
+        principalName,
+        totalStudents,
+        status,
+        facilities,
+        notes,
+      },
       { transaction: t }
     );
 
+    // Link academy to user as Admin
     const user = await User.findByPk(userId);
-    await user.addAcademy(academy, { through: { role: "Owner" }, transaction: t });
+    await user.addAcademy(academy, { through: { role: "Admin" }, transaction: t });
 
     await t.commit();
-    res.status(201).json({ message: "Academy created successfully", academy });
+    return res.status(201).json({ message: "Academy created successfully", academy });
   } catch (err) {
     await t.rollback();
     console.error("CreateAcademy error:", err);
     if (err.name === "SequelizeUniqueConstraintError") {
-      return res.status(400).json({ message: "Email or Registration Number already exists" });
+      return res
+        .status(400)
+        .json({ message: "Registration Number or email already exists" });
     }
-    res.status(500).json({ message: "Server error creating academy", error: err.message });
+    return res
+      .status(500)
+      .json({ message: "Server error creating academy", error: err.message });
   }
 };
 
 // ==================== GET USER'S ACADEMIES ====================
-
-// In your academyController.js
 const getUserAcademies = async (req, res) => {
   try {
     const userId = req.user.id;
-    
+
     const academies = await Academy.findAll({
       include: [
         {
           model: UserAcademy,
           as: "userAcademies",
-          where: { userId: userId },
+          where: { userId },
           attributes: ["role"],
-          required: true
-        }
-      ]
+          required: true,
+        },
+      ],
     });
 
     if (!academies.length) {
       return res.status(200).json({ message: "No academy created yet." });
     }
 
-    res.json(academies);
+    const mapped = academies.map((academy) => ({
+      id: academy.id,
+      name: academy.name,
+      status: academy.status,
+      role: academy.userAcademies[0].role,
+    }));
+
+    res.json(mapped);
   } catch (error) {
     console.error(error);
     res.status(500).json({
@@ -108,8 +124,6 @@ const getUserAcademies = async (req, res) => {
     });
   }
 };
-
-
 
 // ==================== GET SINGLE ACADEMY ====================
 const getAcademyById = async (req, res) => {
@@ -120,7 +134,7 @@ const getAcademyById = async (req, res) => {
         {
           model: User,
           as: "users",
-          attributes: ["id", "fullName", "email", "role"],
+          attributes: ["id", "fullName", "email"],
           through: { attributes: ["role"] },
         },
       ],
@@ -146,7 +160,9 @@ const updateAcademy = async (req, res) => {
     if (updates.status) {
       const validStatuses = ["Active", "Inactive", "Pending"];
       if (!validStatuses.includes(updates.status)) {
-        return res.status(400).json({ message: `Invalid status. Must be one of ${validStatuses.join(", ")}` });
+        return res.status(400).json({
+          message: `Invalid status. Must be one of ${validStatuses.join(", ")}`,
+        });
       }
     }
 
@@ -181,7 +197,7 @@ const deleteAcademy = async (req, res) => {
   }
 };
 
-// ==================== REFRESH TOKEN HANDLER ====================
+// ==================== REFRESH TOKEN ====================
 const refreshToken = (req, res) => {
   try {
     const { refreshToken } = req.body;
@@ -190,7 +206,11 @@ const refreshToken = (req, res) => {
     jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET, (err, decoded) => {
       if (err) return res.status(401).json({ message: "Invalid refresh token" });
 
-      const accessToken = jwt.sign({ id: decoded.id, role: decoded.role }, process.env.JWT_SECRET, { expiresIn: "1h" });
+      const accessToken = jwt.sign(
+        { id: decoded.id, role: decoded.role },
+        process.env.JWT_SECRET,
+        { expiresIn: "1h" }
+      );
       res.json({ accessToken });
     });
   } catch (err) {
@@ -199,55 +219,112 @@ const refreshToken = (req, res) => {
   }
 };
 
-// GET /api/academies/current
-const getCurrentAcademy = async (req, res) => {
-  try {
-    const userId = req.user.id;
-
-    // Fetch the default academy (first academy assigned to the user)
-    const userAcademy = await UserAcademy.findOne({
-      where: { userId },
-      include: [
-        {
-          model: Academy,
-          as: "academy",
-        },
-      ],
-      order: [["createdAt", "ASC"]],
-    });
-
-    if (!userAcademy) {
-      return res.status(404).json({ message: "No academy assigned to this user" });
-    }
-
-    res.json({ academy: userAcademy.academy, role: userAcademy.role });
-  } catch (err) {
-    console.error("GetCurrentAcademy error:", err);
-    res.status(500).json({ message: "Server error fetching current academy", error: err.message });
-  }
-};
-// POST /api/academies/switch
+// ==================== SWITCH ACTIVE ACADEMY ====================
 const switchAcademy = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { academyId } = req.body;
+    let academyId = req.params.academyId;
 
-    // Check if the user belongs to the academy
+    if (!academyId) {
+      const firstAcademy = await UserAcademy.findOne({
+        where: { userId },
+        order: [["createdAt", "ASC"]],
+      });
+
+      if (!firstAcademy) return res.status(400).json({ message: "No academies linked to user" });
+      academyId = firstAcademy.academyId;
+    }
+
     const userAcademy = await UserAcademy.findOne({
       where: { userId, academyId },
       include: [{ model: Academy, as: "academy" }],
     });
 
-    if (!userAcademy) {
-      return res.status(403).json({ message: "You are not allowed to access this academy" });
-    }
+    if (!userAcademy) return res.status(403).json({ message: "Access denied to this academy" });
 
-    res.json({ academy: userAcademy.academy, role: userAcademy.role });
+    const userAcademies = await UserAcademy.findAll({
+      where: { userId },
+      attributes: ["academyId"],
+    });
+    const academyIds = userAcademies.map((ua) => ua.academyId);
+
+    const userPerms = await UserPermission.findAll({
+      where: { userId },
+      attributes: ["permissionName"],
+    });
+    const permissions = userPerms.map((p) => p.permissionName);
+
+    const token = jwt.sign(
+      {
+        id: userId,
+        email: req.user.email,
+        role: req.user.role,
+        academyIds,
+        activeAcademyId: academyId,
+        permissions,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "None",
+      maxAge: 24 * 60 * 60 * 1000,
+    });
+
+    res.json({
+      success: true,
+      token,
+      currentAcademy: userAcademy.academy,
+      role: req.user.role,
+    });
   } catch (err) {
     console.error("SwitchAcademy error:", err);
     res.status(500).json({ message: "Server error switching academy", error: err.message });
   }
 };
+
+// ==================== GET ALL ACADEMIES ====================
+const getAllAcademies = async (req, res) => {
+  try {
+    const academies = await Academy.findAll({
+      include: [
+        {
+          model: User,
+          as: "users",
+          attributes: ["id", "fullName", "email"],
+          through: { attributes: ["role"] },
+        },
+      ],
+    });
+
+    if (!academies.length) {
+      return res.status(200).json({ message: "No academies found" });
+    }
+
+    const mapped = academies.map((academy) => ({
+      id: academy.id,
+      name: academy.name,
+      status: academy.status,
+      principalName: academy.principalName,
+      totalStudents: academy.totalStudents,
+      users: academy.users.map((u) => ({
+        id: u.id,
+        fullName: u.fullName,
+        email: u.email,
+        role: u.UserAcademy.role,
+      })),
+    }));
+
+    res.json(mapped);
+  } catch (err) {
+    console.error("GetAllAcademies error:", err);
+    res.status(500).json({ message: "Server error fetching all academies", error: err.message });
+  }
+};
+
 
 module.exports = {
   createAcademy,
@@ -256,6 +333,6 @@ module.exports = {
   updateAcademy,
   deleteAcademy,
   refreshToken,
-  getCurrentAcademy,   // 🔹 new
-  switchAcademy,       // 🔹 new
+  switchAcademy,
+  getAllAcademies
 };
