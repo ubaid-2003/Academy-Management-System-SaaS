@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import DashboardLayout from "@/app/components/DashboardLayout";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
-
 import {
   GraduationCap,
   Building2,
@@ -19,18 +18,32 @@ import {
   CheckCircle,
   ArrowLeft,
   Save,
-  Building,
-  Globe,
-  Briefcase,
-  Hash,
-  StickyNote,
-  Zap,
 } from "lucide-react";
+
+// -----------------------
+// Form data type
+// -----------------------
+interface AcademyFormData {
+  name: string;
+  registrationNumber: string;
+  address: string;
+  city: string;
+  province: string;
+  country: string;
+  email: string;
+  phone: string;
+  principalName: string;
+  totalStudents: number;
+  facilities: string;
+  notes: string;
+  status: "Active" | "Inactive" | "Pending";
+}
 
 export default function AddAcademyPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const [formData, setFormData] = useState({
+
+  const [formData, setFormData] = useState<AcademyFormData>({
     name: "",
     registrationNumber: "",
     address: "",
@@ -40,7 +53,7 @@ export default function AddAcademyPage() {
     email: "",
     phone: "",
     principalName: "",
-    totalStudents: "",
+    totalStudents: 0,
     facilities: "",
     notes: "",
     status: "Active",
@@ -49,25 +62,56 @@ export default function AddAcademyPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [userRole, setUserRole] = useState<string | null>(null);
+  const [showNotification, setShowNotification] = useState(false);
 
+  // -----------------------
+  // Redirect if not admin
+  // -----------------------
   useEffect(() => {
-    if (!user) return; // wait for context to load
-
+    if (!user) return;
     if (user.role !== "Admin" && user.role !== "SuperAdmin") {
-      router.push("/pages/dashboard"); // redirect non-admin to dashboard
+      router.push("/pages/dashboard");
     }
   }, [user, router]);
 
-
+  // -----------------------
+  // Handle input changes
+  // -----------------------
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-    // Clear error when user starts typing
+    const { name, value, type } = e.target;
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: name === "totalStudents" && type === "number" ? Number(value) : value,
+    }));
+
     if (error) setError(null);
   };
 
+  // -----------------------
+  // Validate payload
+  // -----------------------
+  const validatePayload = (payload: AcademyFormData) => {
+    if (!payload.name.trim()) throw new Error("Academy name is required");
+    if (!payload.registrationNumber.trim()) throw new Error("Registration number is required");
+    if (!payload.address.trim()) throw new Error("Address is required");
+    if (!payload.city.trim()) throw new Error("City is required");
+    if (!payload.province.trim()) throw new Error("Province is required");
+    if (!payload.country.trim()) throw new Error("Country is required");
+    if (!payload.email.trim()) throw new Error("Email is required");
+    if (!/^\S+@\S+\.\S+$/.test(payload.email)) throw new Error("Please enter a valid email address");
+    if (!payload.phone.trim()) throw new Error("Phone number is required");
+    if (!payload.principalName.trim()) throw new Error("Principal name is required");
+    if (payload.totalStudents <= 0) throw new Error("Total Students must be greater than 0");
+    if (!payload.facilities.trim()) throw new Error("Facilities are required");
+    if (!payload.notes.trim()) throw new Error("Notes are required");
+  };
+
+  // -----------------------
+  // Submit form
+  // -----------------------
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -75,443 +119,397 @@ export default function AddAcademyPage() {
     setSuccess(false);
 
     try {
-      if (!user?.token) {
-        setError("You must be logged in to create an academy.");
-        setLoading(false);
-        return;
-      }
+      if (!user?.token) throw new Error("You must be logged in to create an academy");
 
+      const payload: AcademyFormData = {
+        ...formData,
+        name: formData.name.trim(),
+        registrationNumber: formData.registrationNumber.trim(),
+        address: formData.address.trim(),
+        city: formData.city.trim(),
+        province: formData.province.trim(),
+        country: formData.country.trim() || "Pakistan",
+        email: formData.email.trim(),
+        phone: formData.phone.trim(),
+        principalName: formData.principalName.trim(),
+        facilities: formData.facilities.trim(),
+        notes: formData.notes.trim(),
+      };
 
+      validatePayload(payload);
 
-
-      const res = await fetch("http://localhost:5000/api/academies", {
+      const res = await fetch(`http://localhost:5000/api/academies`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${user.token}`,
         },
-        body: JSON.stringify({
-          ...formData,
-          totalStudents: Number(formData.totalStudents),
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(errorText || "Failed to create academy");
+        const text = await res.text();
+        throw new Error(text || "Failed to create academy");
       }
 
       const data = await res.json();
-      setSuccess(true);
       console.log("Academy created:", data);
-
-      // Reset form after 2 seconds
+      
+      // Show success notification
+      setSuccess(true);
+      setShowNotification(true);
+      
+      // Redirect after 2 seconds
       setTimeout(() => {
-        setFormData({
-          name: "",
-          registrationNumber: "",
-          address: "",
-          city: "",
-          province: "",
-          country: "Pakistan",
-          email: "",
-          phone: "",
-          principalName: "",
-          totalStudents: "",
-          facilities: "",
-          notes: "",
-          status: "Active",
-        });
-        setSuccess(false);
+        router.push("/pages/academy-admin/academies");
       }, 2000);
     } catch (err: any) {
       console.error(err);
-      setError(err.message || "Something went wrong.");
+      setError(err.message || "Something went wrong");
     } finally {
       setLoading(false);
     }
   };
 
-  if (!user || user.role !== "Admin") {
+  // -----------------------
+  // Access denied page
+  // -----------------------
+  if (!user || (user.role !== "Admin" && user.role !== "SuperAdmin")) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-screen bg-white">
+          <div className="max-w-md p-8 text-center border border-red-200 bg-red-50 rounded-xl">
+            <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full">
+              <AlertCircle className="w-8 h-8 text-red-600" />
+            </div>
+            <h3 className="mb-2 text-xl font-semibold text-red-800">Access Denied</h3>
+            <p className="text-red-600">You are not authorized to access this page.</p>
+            <button
+              onClick={() => router.push("/pages/dashboard")}
+              className="inline-flex items-center px-4 py-2 mt-4 text-white bg-red-600 rounded-lg hover:bg-red-700"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Dashboard
+            </button>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // -----------------------
+  // Form UI
+  // -----------------------
   return (
     <DashboardLayout>
-      <div className="flex items-center justify-center min-h-screen bg-white">
-        <div className="max-w-md p-8 text-center border border-red-200 bg-red-50 rounded-xl">
-          <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full">
-            <AlertCircle className="w-8 h-8 text-red-600" />
+      {/* Success Notification */}
+      {showNotification && (
+        <div className="fixed z-50 top-4 right-4 animate-fade-in-down">
+          <div className="flex items-center p-4 mb-4 text-white bg-green-600 rounded-lg shadow-lg">
+            <CheckCircle className="w-5 h-5 mr-2" />
+            <span>Academy created successfully!</span>
           </div>
-          <h3 className="mb-2 text-xl font-semibold text-red-800">Access Denied</h3>
-          <p className="text-red-600">You are not authorized to access this page.</p>
-          <button
-            onClick={() => router.push("/pages/dashboard")}
-            className="inline-flex items-center px-4 py-2 mt-4 text-white transition-colors bg-red-600 rounded-lg hover:bg-red-700"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Dashboard
-          </button>
         </div>
+      )}
+
+      <div className="max-w-4xl p-6 mx-auto mt-8 bg-white rounded-lg shadow-md">
+        <div className="flex items-center mb-6">
+          <div className="p-2 bg-blue-100 rounded-full">
+            <GraduationCap className="w-8 h-8 text-blue-600" />
+          </div>
+          <h2 className="ml-3 text-2xl font-bold text-gray-800">Add New Academy</h2>
+        </div>
+
+        {error && (
+          <div className="flex items-center p-4 mb-6 text-red-700 bg-red-100 rounded-lg">
+            <AlertCircle className="w-5 h-5 mr-2" />
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            {/* Academy Name */}
+            <div>
+              <label className="block mb-2 text-sm font-medium text-gray-700">
+                Academy Name <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                  <Building2 className="w-5 h-5 text-gray-400" />
+                </div>
+                <input
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  placeholder="Academy Name"
+                  className="w-full py-2 pl-10 pr-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Registration Number */}
+            <div>
+              <label className="block mb-2 text-sm font-medium text-gray-700">
+                Registration Number <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                  <FileText className="w-5 h-5 text-gray-400" />
+                </div>
+                <input
+                  name="registrationNumber"
+                  value={formData.registrationNumber}
+                  onChange={handleChange}
+                  placeholder="Registration Number"
+                  className="w-full py-2 pl-10 pr-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Address */}
+            <div className="md:col-span-2">
+              <label className="block mb-2 text-sm font-medium text-gray-700">
+                Address <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                  <MapPin className="w-5 h-5 text-gray-400" />
+                </div>
+                <input
+                  name="address"
+                  value={formData.address}
+                  onChange={handleChange}
+                  placeholder="Address"
+                  className="w-full py-2 pl-10 pr-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* City */}
+            <div>
+              <label className="block mb-2 text-sm font-medium text-gray-700">
+                City <span className="text-red-500">*</span>
+              </label>
+              <input
+                name="city"
+                value={formData.city}
+                onChange={handleChange}
+                placeholder="City"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                required
+              />
+            </div>
+
+            {/* Province */}
+            <div>
+              <label className="block mb-2 text-sm font-medium text-gray-700">
+                Province <span className="text-red-500">*</span>
+              </label>
+              <input
+                name="province"
+                value={formData.province}
+                onChange={handleChange}
+                placeholder="Province"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                required
+              />
+            </div>
+
+            {/* Country */}
+            <div>
+              <label className="block mb-2 text-sm font-medium text-gray-700">
+                Country <span className="text-red-500">*</span>
+              </label>
+              <select
+                name="country"
+                value={formData.country}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                required
+              >
+                <option value="Pakistan">Pakistan</option>
+                <option value="India">India</option>
+                <option value="United States">United States</option>
+                <option value="United Kingdom">United Kingdom</option>
+                <option value="Canada">Canada</option>
+                <option value="Australia">Australia</option>
+              </select>
+            </div>
+
+            {/* Status */}
+            <div>
+              <label className="block mb-2 text-sm font-medium text-gray-700">
+                Status <span className="text-red-500">*</span>
+              </label>
+              <select
+                name="status"
+                value={formData.status}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                required
+              >
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+                <option value="Pending">Pending</option>
+              </select>
+            </div>
+
+            {/* Email */}
+            <div>
+              <label className="block mb-2 text-sm font-medium text-gray-700">
+                Email <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                  <Mail className="w-5 h-5 text-gray-400" />
+                </div>
+                <input
+                  name="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  placeholder="Email"
+                  className="w-full py-2 pl-10 pr-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Phone */}
+            <div>
+              <label className="block mb-2 text-sm font-medium text-gray-700">
+                Phone <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                  <Phone className="w-5 h-5 text-gray-400" />
+                </div>
+                <input
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  placeholder="Phone"
+                  className="w-full py-2 pl-10 pr-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Principal Name */}
+            <div>
+              <label className="block mb-2 text-sm font-medium text-gray-700">
+                Principal Name <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                  <User className="w-5 h-5 text-gray-400" />
+                </div>
+                <input
+                  name="principalName"
+                  value={formData.principalName}
+                  onChange={handleChange}
+                  placeholder="Principal Name"
+                  className="w-full py-2 pl-10 pr-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Total Students */}
+            <div>
+              <label className="block mb-2 text-sm font-medium text-gray-700">
+                Total Students <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                  <Users className="w-5 h-5 text-gray-400" />
+                </div>
+                <input
+                  name="totalStudents"
+                  type="number"
+                  min="1"
+                  value={formData.totalStudents}
+                  onChange={handleChange}
+                  placeholder="Total Students"
+                  className="w-full py-2 pl-10 pr-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Facilities */}
+            <div className="md:col-span-2">
+              <label className="block mb-2 text-sm font-medium text-gray-700">
+                Facilities <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                name="facilities"
+                value={formData.facilities}
+                onChange={handleChange}
+                placeholder="List of facilities (separated by commas)"
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                required
+              />
+            </div>
+
+            {/* Notes */}
+            <div className="md:col-span-2">
+              <label className="block mb-2 text-sm font-medium text-gray-700">
+                Notes <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                name="notes"
+                value={formData.notes}
+                onChange={handleChange}
+                placeholder="Additional notes about the academy"
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-4 space-x-4 border-t border-gray-200">
+            <button
+              type="button"
+              onClick={() => router.back()}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+            >
+              <Save className="w-4 h-4 mr-2" />
+              {loading ? "Creating Academy..." : "Create Academy"}
+            </button>
+          </div>
+        </form>
       </div>
+
+      {/* Add custom animation styles */}
+      <style jsx>{`
+        @keyframes fade-in-down {
+          0% {
+            opacity: 0;
+            transform: translateY(-20px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .animate-fade-in-down {
+          animation: fade-in-down 0.5s ease-out;
+        }
+      `}</style>
     </DashboardLayout>
   );
-}
-
-
-return (
-  <DashboardLayout>
-    <div className="min-h-screen bg-white">
-      {/* Header */}
-      <div className="bg-white border-b border-slate-200">
-        <div className="px-6 py-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => router.push("/pages/academy-admin/academies")}
-                className="p-2 transition-colors rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-                  Create New Academy
-                </h1>
-                <p className="mt-2 text-lg text-slate-600">
-                  Add a new educational institution to the system
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-3">
-              <div className="flex items-center justify-center w-12 h-12 shadow-lg bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl">
-                <GraduationCap className="w-6 h-6 text-white" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="px-6 py-8">
-        <div className="max-w-4xl mx-auto">
-          {/* Success Message */}
-          {success && (
-            <div className="p-4 mb-8 border border-green-200 bg-green-50 rounded-xl">
-              <div className="flex items-center space-x-3">
-                <CheckCircle className="w-5 h-5 text-green-600" />
-                <div>
-                  <p className="font-medium text-green-800">Academy Created Successfully!</p>
-                  <p className="text-sm text-green-700">The academy has been added to the system.</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Error Message */}
-          {error && (
-            <div className="p-4 mb-8 border border-red-200 bg-red-50 rounded-xl">
-              <div className="flex items-center space-x-3">
-                <AlertCircle className="w-5 h-5 text-red-600" />
-                <div>
-                  <p className="font-medium text-red-800">Error Creating Academy</p>
-                  <p className="text-sm text-red-700">{error}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-8">
-            {/* Basic Information Section */}
-            <div className="bg-white border shadow-sm border-slate-200 rounded-xl">
-              <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 rounded-t-xl">
-                <div className="flex items-center space-x-3">
-                  <Building2 className="w-5 h-5 text-slate-600" />
-                  <h3 className="text-lg font-semibold text-slate-900">Basic Information</h3>
-                </div>
-              </div>
-              <div className="p-6 space-y-6">
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                  <div>
-                    <label className="flex items-center mb-2 space-x-2 text-sm font-medium text-slate-700">
-                      <Building className="w-4 h-4" />
-                      <span>Academy Name *</span>
-                    </label>
-                    <input
-                      name="name"
-                      value={formData.name}
-                      onChange={handleChange}
-                      required
-                      placeholder="Enter academy name"
-                      className="w-full px-4 py-3 transition-all border outline-none border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="flex items-center mb-2 space-x-2 text-sm font-medium text-slate-700">
-                      <Hash className="w-4 h-4" />
-                      <span>Registration Number *</span>
-                    </label>
-                    <input
-                      name="registrationNumber"
-                      value={formData.registrationNumber}
-                      onChange={handleChange}
-                      required
-                      placeholder="Enter registration number"
-                      className="w-full px-4 py-3 transition-all border outline-none border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Location Information Section */}
-            <div className="bg-white border shadow-sm border-slate-200 rounded-xl">
-              <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 rounded-t-xl">
-                <div className="flex items-center space-x-3">
-                  <MapPin className="w-5 h-5 text-slate-600" />
-                  <h3 className="text-lg font-semibold text-slate-900">Location Details</h3>
-                </div>
-              </div>
-              <div className="p-6 space-y-6">
-                <div>
-                  <label className="flex items-center mb-2 space-x-2 text-sm font-medium text-slate-700">
-                    <MapPin className="w-4 h-4" />
-                    <span>Complete Address *</span>
-                  </label>
-                  <input
-                    name="address"
-                    value={formData.address}
-                    onChange={handleChange}
-                    required
-                    placeholder="Enter complete address"
-                    className="w-full px-4 py-3 transition-all border outline-none border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-                  <div>
-                    <label className="flex items-center mb-2 space-x-2 text-sm font-medium text-slate-700">
-                      <Building className="w-4 h-4" />
-                      <span>City *</span>
-                    </label>
-                    <input
-                      name="city"
-                      value={formData.city}
-                      onChange={handleChange}
-                      required
-                      placeholder="Enter city"
-                      className="w-full px-4 py-3 transition-all border outline-none border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="flex items-center mb-2 space-x-2 text-sm font-medium text-slate-700">
-                      <MapPin className="w-4 h-4" />
-                      <span>Province *</span>
-                    </label>
-                    <input
-                      name="province"
-                      value={formData.province}
-                      onChange={handleChange}
-                      required
-                      placeholder="Enter province"
-                      className="w-full px-4 py-3 transition-all border outline-none border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="flex items-center mb-2 space-x-2 text-sm font-medium text-slate-700">
-                      <Globe className="w-4 h-4" />
-                      <span>Country *</span>
-                    </label>
-                    <input
-                      name="country"
-                      value={formData.country}
-                      onChange={handleChange}
-                      required
-                      placeholder="Enter country"
-                      className="w-full px-4 py-3 transition-all border outline-none border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Contact Information Section */}
-            <div className="bg-white border shadow-sm border-slate-200 rounded-xl">
-              <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 rounded-t-xl">
-                <div className="flex items-center space-x-3">
-                  <Mail className="w-5 h-5 text-slate-600" />
-                  <h3 className="text-lg font-semibold text-slate-900">Contact Information</h3>
-                </div>
-              </div>
-              <div className="p-6 space-y-6">
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                  <div>
-                    <label className="flex items-center mb-2 space-x-2 text-sm font-medium text-slate-700">
-                      <Mail className="w-4 h-4" />
-                      <span>Email Address *</span>
-                    </label>
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      required
-                      placeholder="Enter email address"
-                      className="w-full px-4 py-3 transition-all border outline-none border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="flex items-center mb-2 space-x-2 text-sm font-medium text-slate-700">
-                      <Phone className="w-4 h-4" />
-                      <span>Phone Number *</span>
-                    </label>
-                    <input
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleChange}
-                      required
-                      placeholder="Enter phone number"
-                      className="w-full px-4 py-3 transition-all border outline-none border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Administration Section */}
-            <div className="bg-white border shadow-sm border-slate-200 rounded-xl">
-              <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 rounded-t-xl">
-                <div className="flex items-center space-x-3">
-                  <Briefcase className="w-5 h-5 text-slate-600" />
-                  <h3 className="text-lg font-semibold text-slate-900">Administration Details</h3>
-                </div>
-              </div>
-              <div className="p-6 space-y-6">
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                  <div>
-                    <label className="flex items-center mb-2 space-x-2 text-sm font-medium text-slate-700">
-                      <User className="w-4 h-4" />
-                      <span>Principal Name *</span>
-                    </label>
-                    <input
-                      name="principalName"
-                      value={formData.principalName}
-                      onChange={handleChange}
-                      required
-                      placeholder="Enter principal's full name"
-                      className="w-full px-4 py-3 transition-all border outline-none border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="flex items-center mb-2 space-x-2 text-sm font-medium text-slate-700">
-                      <Users className="w-4 h-4" />
-                      <span>Total Students *</span>
-                    </label>
-                    <input
-                      type="number"
-                      name="totalStudents"
-                      value={formData.totalStudents}
-                      onChange={handleChange}
-                      required
-                      placeholder="Enter number of students"
-                      className="w-full px-4 py-3 transition-all border outline-none border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="flex items-center mb-2 space-x-2 text-sm font-medium text-slate-700">
-                    <Settings className="w-4 h-4" />
-                    <span>Status *</span>
-                  </label>
-                  <select
-                    name="status"
-                    value={formData.status}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-4 py-3 transition-all bg-white border outline-none border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                    <option value="Pending">Pending</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Additional Information Section */}
-            <div className="bg-white border shadow-sm border-slate-200 rounded-xl">
-              <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 rounded-t-xl">
-                <div className="flex items-center space-x-3">
-                  <FileText className="w-5 h-5 text-slate-600" />
-                  <h3 className="text-lg font-semibold text-slate-900">Additional Information</h3>
-                </div>
-              </div>
-              <div className="p-6 space-y-6">
-                <div>
-                  <label className="flex items-center mb-2 space-x-2 text-sm font-medium text-slate-700">
-                    <Zap className="w-4 h-4" />
-                    <span>Facilities *</span>
-                  </label>
-                  <textarea
-                    name="facilities"
-                    value={formData.facilities}
-                    onChange={handleChange}
-                    required
-                    rows={3}
-                    placeholder="Describe the facilities available at the academy..."
-                    className="w-full px-4 py-3 transition-all border outline-none resize-none border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="flex items-center mb-2 space-x-2 text-sm font-medium text-slate-700">
-                    <StickyNote className="w-4 h-4" />
-                    <span>Notes *</span>
-                  </label>
-                  <textarea
-                    name="notes"
-                    value={formData.notes}
-                    onChange={handleChange}
-                    required
-                    rows={4}
-                    placeholder="Add any additional notes or comments about the academy..."
-                    className="w-full px-4 py-3 transition-all border outline-none resize-none border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Submit Button */}
-            <div className="flex items-center justify-between pt-6 border-t border-slate-200">
-              <button
-                type="button"
-                onClick={() => router.push("/pages/academy-admin/academies")}
-                className="inline-flex items-center px-6 py-3 font-medium transition-colors border border-slate-300 text-slate-700 rounded-xl hover:bg-slate-50"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Cancel
-              </button>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="inline-flex items-center px-8 py-3 font-medium text-white transition-all bg-blue-600 shadow-sm rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <>
-                    <div className="w-4 h-4 mr-2 border-2 border-white rounded-full border-t-transparent animate-spin"></div>
-                    Creating Academy...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4 mr-2" />
-                    Create Academy
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  </DashboardLayout>
-);
 }

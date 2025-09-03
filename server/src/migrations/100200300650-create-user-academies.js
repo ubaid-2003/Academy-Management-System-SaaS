@@ -12,7 +12,7 @@ module.exports = {
       },
       academyId: {
         type: Sequelize.INTEGER.UNSIGNED,
-        allowNull: false,
+        allowNull: true,
         references: { model: 'academies', key: 'id' },
         onUpdate: 'CASCADE',
         onDelete: 'CASCADE'

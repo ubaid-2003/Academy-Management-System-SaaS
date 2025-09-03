@@ -6,6 +6,10 @@ const { sequelize } = require("./src/models"); // Sequelize models
 // Import routes
 const authRoutes = require("./src/routes/auth");
 const academyRoutes = require("./src/routes/academyRoutes");
+const studentRoutes = require("./src/routes/studentRoutes"); // ✅ new
+const teacherRoutes = require("./src/routes/teacherRoutes");
+
+// (later you’ll add teacherRoutes too)
 
 // Middleware
 const { authMiddleware, adminAuth } = require("./src/middleware/authMiddleware");
@@ -34,8 +38,19 @@ app.get("/", (req, res) => res.send("✅ API is running..."));
 // =====================
 app.use("/api/auth", authRoutes);
 
-// Protected admin routes (only accessible by Admin users)
+// Academies CRUD (only admins can manage academies)
 app.use("/api/academies", authMiddleware, adminAuth, academyRoutes);
+
+// Students CRUD (any authenticated academy admin can create/manage students)
+app.use("/api/students", authMiddleware, adminAuth, studentRoutes);
+
+app.use("/api", teacherRoutes);
+app.use("/api", studentRoutes);  // ✅ important
+
+
+
+// (later you’ll add teachers here)
+// app.use("/api/teachers", authMiddleware, adminAuth, teacherRoutes);
 
 // =====================
 // Global error handler

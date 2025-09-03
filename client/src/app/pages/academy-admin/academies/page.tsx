@@ -3,6 +3,8 @@ import axios from "axios";
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/app/components/DashboardLayout";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/app/context/AuthContext"; // ⬅️ import context
+
 
 import {
   Eye,
@@ -52,12 +54,13 @@ export default function AcademiesPage() {
   const router = useRouter();
 
   const [displayAcademies, setDisplayAcademies] = useState<Academy[]>([]);
-  const [academies, setAcademies] = useState<Academy[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [activeDropdown, setActiveDropdown] = useState<number | null>(null);
+  const [academies, setAcademies] = useState<Academy[]>([]); // only page view (first academy)
+  const [allDropdownAcademies, setAllDropdownAcademies] = useState<Academy[]>([]); // for dropdown
 
   const [selectedAcademy, setSelectedAcademy] = useState<Academy | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
@@ -66,27 +69,33 @@ export default function AcademiesPage() {
   const [academyToDelete, setAcademyToDelete] = useState<Academy | null>(null);
   const [editFormData, setEditFormData] = useState<Partial<Academy>>({});
 
-useEffect(() => {
-  const fetchAcademies = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:5000/api/academies/user", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error("Failed to fetch academies");
-      const data: Academy[] = await res.json();
-      setAcademies(data);
-      if (data.length > 0) {
-        setSelectedAcademy(data[0]); // <-- Default to first academy
+  const { activeAcademyId, user } = useAuth();
+
+  useEffect(() => {
+    const fetchAcademyData = async () => {
+      if (!user?.token || !activeAcademyId) return;
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const res = await axios.get(
+          `http://localhost:5000/api/academies/${activeAcademyId}`,
+          { headers: { Authorization: `Bearer ${user.token}` } }
+        );
+
+        setAcademies([res.data]); // ✅ only the active one
+      } catch (err: any) {
+        console.error("Fetch error:", err);
+        setError(err.response?.data?.message || "Failed to fetch academy");
+      } finally {
+        setLoading(false);
       }
-    } catch (err: any) {
-      setError(err.response?.data?.message || err.message || "Failed to update academy");
-    } finally {
-      setLoading(false);
-    }
-  };
-  fetchAcademies();
-}, []);
+    };
+
+    fetchAcademyData();
+  }, [activeAcademyId, user?.token]);
+
 
   const filteredAcademies = academies.filter((a) =>
     [a.name, a.city, a.registrationNumber]
@@ -176,24 +185,27 @@ useEffect(() => {
       alert(err.response?.data?.message || "Failed to update academy");
     }
   };
-
-  if (loading)
+  if (loading) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center min-h-screen">
-          <div className="flex flex-col items-center space-y-4">
-            <div className="relative">
-              <div className="w-16 h-16 border-4 rounded-full border-slate-200"></div>
-              <div className="absolute inset-0 w-16 h-16 border-4 border-blue-600 rounded-full border-t-transparent animate-spin"></div>
-            </div>
-            <div className="text-center">
-              <h3 className="text-lg font-semibold text-slate-800">Loading Academies</h3>
-              <p className="text-slate-600">Please wait while we fetch your academies...</p>
-            </div>
-          </div>
+          <p className="text-slate-600">
+            Loading Academy {activeAcademyId ?? ""}...
+          </p>
         </div>
       </DashboardLayout>
     );
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-screen">
+          <p className="text-red-500">{error}</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>

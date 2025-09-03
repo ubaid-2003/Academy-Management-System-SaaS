@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { useAuth } from "./AuthContext";
+import { useAuth, User } from "./AuthContext";
 
 export interface Academy {
   id: number;
@@ -34,20 +34,26 @@ export const AcademyProvider = ({ children }: { children: ReactNode }) => {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/academies/user`, {
         headers: { Authorization: `Bearer ${user.token}` },
       });
-      if (!res.ok) throw new Error("Failed to fetch academies");
-      const data: Academy[] = await res.json();
 
+      if (!res.ok) throw new Error("Failed to fetch academies");
+
+      const data: Academy[] = await res.json();
       setAcademies(data);
 
+      // Determine active academy
       const active =
         data.find((a) => a.id === Number(user?.activeAcademyId)) || data[0];
 
       if (active) {
         setCurrentAcademy(active);
 
-        // If user doesn't have activeAcademyId, switch it automatically
+        // Auto-switch if user has no activeAcademyId
         if (!user?.activeAcademyId) {
-          await handleAcademySwitch(active);
+          try {
+            await handleAcademySwitch(active);
+          } catch (err) {
+            console.error("Failed to auto-switch academy:", err);
+          }
         }
       }
     } catch (err) {
@@ -65,10 +71,11 @@ export const AcademyProvider = ({ children }: { children: ReactNode }) => {
   }, [user]);
 
   // ---------------------------
-  // Switch academy
+  // Switch academy safely
   // ---------------------------
   const handleAcademySwitch = async (academy: Academy) => {
     if (!user) return;
+
     try {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/academies/switch/${academy.id}`,
@@ -82,28 +89,31 @@ export const AcademyProvider = ({ children }: { children: ReactNode }) => {
       );
 
       if (!res.ok) throw new Error("Failed to switch academy");
+
       const data = await res.json();
 
-      const newUser = {
+      // Always preserve current token if API does not return one
+      const newUser: User = {
         ...user,
-        token: data.token,
-        activeAcademyId: data.currentAcademy.id,
+        token: data.token || user.token,
+        activeAcademyId: data.currentAcademy?.id || academy.id,
       };
 
       setUser(newUser);
-      setCurrentAcademy(data.currentAcademy);
+      setCurrentAcademy(data.currentAcademy || academy);
 
-      console.log("Switched academy:", data.currentAcademy.name);
+      console.log("Switched academy:", data.currentAcademy?.name || academy.name);
     } catch (err) {
       console.error("Switch academy error:", err);
+      // Do not logout automatically, just preserve user
     }
   };
 
   // ---------------------------
-  // Create academy + link user
+  // Create academy safely
   // ---------------------------
   const createAcademy = async (academyData: Partial<Academy>) => {
-    if (!user) return null;
+    if (!user?.token) return null;
 
     try {
       // 1. Create academy
@@ -126,15 +136,16 @@ export const AcademyProvider = ({ children }: { children: ReactNode }) => {
           Authorization: `Bearer ${user.token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ userId: (user as any).id, academyId: academy.id }),
+        body: JSON.stringify({ userId: user.id, academyId: academy.id }),
       });
 
-      // 3. Update state
+      // 3. Update state safely
       setAcademies((prev) => [...prev, academy]);
       setCurrentAcademy(academy);
 
-      const updatedUser = {
+      const updatedUser: User = {
         ...user,
+        token: user.token, // preserve token
         activeAcademyId: academy.id,
         academyIds: [...(user.academyIds || []), academy.id],
       };

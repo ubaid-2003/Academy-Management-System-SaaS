@@ -19,6 +19,12 @@ import {
   ArrowUpRight
 } from 'lucide-react';
 
+type Academy = {
+  id: string;
+  name: string;
+  status: "Active" | "Inactive";
+};
+
 export default function DashboardPage() {
   const router = useRouter();
 
@@ -26,8 +32,9 @@ export default function DashboardPage() {
     academies: 0,
     users: 0,
     activeAcademies: 0,
-    inactiveAcademies: 0
+    inactiveAcademies: 0,
   });
+
   useEffect(() => {
     const fetchStats = async () => {
       try {
@@ -39,14 +46,14 @@ export default function DashboardPage() {
         });
 
         if (!res.ok) throw new Error(await res.text());
-        const academies = await res.json();
+        const academies: Academy[] = await res.json();
 
-        const active = academies.filter((a: any) => a.status === "Active").length;
-        const inactive = academies.filter((a: any) => a.status === "Inactive").length;
+        const active = academies.filter((a) => a.status === "Active").length;
+        const inactive = academies.filter((a) => a.status === "Inactive").length;
 
         setStats({
           academies: academies.length,
-          users: 1, // since jo login krta hy wohi user hota hy
+          users: 1, // logged-in user only
           activeAcademies: active,
           inactiveAcademies: inactive,
         });

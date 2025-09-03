@@ -28,20 +28,7 @@ Object.keys(db).forEach((modelName) => {
   if (db[modelName].associate) db[modelName].associate(db);
 });
 
-// Optional: Teacher ↔ Student many-to-many (if you have TeacherStudent model)
-if (db.Teacher && db.Student && db.TeacherStudent) {
-  db.Teacher.belongsToMany(db.Student, {
-    through: db.TeacherStudent,
-    foreignKey: 'teacherId',
-    otherKey: 'studentId',
-  });
-  db.Student.belongsToMany(db.Teacher, {
-    through: db.TeacherStudent,
-    foreignKey: 'studentId',
-    otherKey: 'teacherId',
-  });
-}
-
+// ✅ No need for duplicate Teacher–Student association (already in models)
 db.sequelize = sequelize;
 db.Sequelize = Sequelize;
 

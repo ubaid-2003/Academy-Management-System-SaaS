@@ -1,7 +1,23 @@
 'use strict';
+const { Model } = require('sequelize');
+
 module.exports = (sequelize, DataTypes) => {
-  const Academy = sequelize.define(
-    'Academy',
+  class Academy extends Model {
+    static associate(models) {
+      // Many-to-many with User
+      Academy.belongsToMany(models.User, {
+        through: models.UserAcademy,
+        as: 'users',
+        foreignKey: 'academyId',
+        otherKey: 'userId',
+      });
+
+      // One-to-many with UserAcademy
+      Academy.hasMany(models.UserAcademy, { as: 'userAcademies', foreignKey: 'academyId' });
+    }
+  }
+
+  Academy.init(
     {
       id: { type: DataTypes.INTEGER.UNSIGNED, primaryKey: true, autoIncrement: true },
       name: { type: DataTypes.STRING, allowNull: false },
@@ -19,23 +35,12 @@ module.exports = (sequelize, DataTypes) => {
       notes: DataTypes.TEXT,
     },
     {
+      sequelize,
+      modelName: 'Academy',
       tableName: 'academies',
       timestamps: true,
     }
   );
-
-  Academy.associate = function(models) {
-    // Many-to-many with User
-    Academy.belongsToMany(models.User, {
-      through: models.UserAcademy,
-      as: 'users',
-      foreignKey: 'academyId',
-      otherKey: 'userId',
-    });
-
-    // One-to-many with UserAcademy
-    Academy.hasMany(models.UserAcademy, { as: 'userAcademies', foreignKey: 'academyId' });
-  };
 
   return Academy;
 };
