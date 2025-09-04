@@ -423,14 +423,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         </button>
 
                         {/* Notifications */}
-                        <button className="relative p-2 transition rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100">
+                        {/* <button className="relative p-2 transition rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100">
                             <Bell className="w-5 h-5" />
                             {academyStats?.pendingEnrollments > 0 && (
                                 <span className="absolute flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full -top-1 -right-1">
                                     {academyStats.pendingEnrollments > 9 ? '9+' : academyStats.pendingEnrollments}
                                 </span>
                             )}
-                        </button>
+                        </button> */}
 
                         {/* Desktop User */}
                         <div className="items-center hidden gap-3 pl-3 border-l md:flex border-slate-200">

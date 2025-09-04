@@ -8,18 +8,24 @@ module.exports = {
         allowNull: false,
         references: { model: 'users', key: 'id' },
         onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onDelete: 'CASCADE',
       },
       academyId: {
         type: Sequelize.INTEGER.UNSIGNED,
-        allowNull: true,
+        allowNull: false,
         references: { model: 'academies', key: 'id' },
         onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onDelete: 'CASCADE',
       },
-      role: { type: Sequelize.STRING, defaultValue: 'Admin' },
+      roleId: { 
+        type: Sequelize.INTEGER.UNSIGNED,
+        allowNull: false,
+        references: { model: 'roles', key: 'id' },
+        onUpdate: 'CASCADE',
+        onDelete: 'SET NULL',
+      },
       createdAt: { type: Sequelize.DATE, allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP') },
-      updatedAt: { type: Sequelize.DATE, allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP') }
+      updatedAt: { type: Sequelize.DATE, allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP') },
     });
   },
   async down(queryInterface, Sequelize) {

@@ -5,9 +5,9 @@ module.exports = (sequelize, DataTypes) => {
     {
       id: { type: DataTypes.INTEGER.UNSIGNED, primaryKey: true, autoIncrement: true },
       fullName: { type: DataTypes.STRING, allowNull: false },
-      email: { type: DataTypes.STRING, allowNull: false, unique: true },
+      email: { type: DataTypes.STRING, allowNull: false },
       password: { type: DataTypes.STRING, allowNull: false },
-      role: { type: DataTypes.ENUM('User', 'Admin', 'SuperAdmin', 'Student', 'Teacher'), defaultValue: 'Student' },
+      roleId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false }, // FK to Role
     },
     {
       tableName: 'users',
@@ -16,6 +16,9 @@ module.exports = (sequelize, DataTypes) => {
   );
 
   User.associate = function (models) {
+    // Each User belongs to 1 Role
+    User.belongsTo(models.Role, { foreignKey: 'roleId', as: 'role' });
+
     // Many-to-many with Academy
     User.belongsToMany(models.Academy, {
       through: models.UserAcademy,

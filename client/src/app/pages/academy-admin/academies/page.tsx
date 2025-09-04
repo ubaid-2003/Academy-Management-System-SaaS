@@ -84,7 +84,7 @@ export default function AcademiesPage() {
           { headers: { Authorization: `Bearer ${user.token}` } }
         );
 
-        setAcademies([res.data]); // ✅ only the active one
+        setAcademies([res.data]); // only the active one
       } catch (err: any) {
         console.error("Fetch error:", err);
         setError(err.response?.data?.message || "Failed to fetch academy");
@@ -95,7 +95,6 @@ export default function AcademiesPage() {
 
     fetchAcademyData();
   }, [activeAcademyId, user?.token]);
-
 
   const filteredAcademies = academies.filter((a) =>
     [a.name, a.city, a.registrationNumber]
@@ -126,21 +125,16 @@ export default function AcademiesPage() {
     setIsDeleteModalOpen(true);
     setActiveDropdown(null);
   };
-  const handleClick = () => {
-    router.push("/pages/academy-admin/add-academy");
-  };
-  const handleConfirmDelete = async () => {
-    if (!academyToDelete) return;
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) throw new Error("Not authorized");
 
+  // ------------------ DELETE ACADEMY ------------------
+  const handleConfirmDelete = async () => {
+    if (!academyToDelete || !user?.token) return;
+    try {
       await axios.delete(
         `http://localhost:5000/api/academies/${academyToDelete.id}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${user.token}` } }
       );
 
-      // Remove deleted academy from state
       setAcademies(prev => prev.filter(a => a.id !== academyToDelete.id));
       closeModals();
     } catch (err: any) {
@@ -167,24 +161,24 @@ export default function AcademiesPage() {
     setEditFormData(prev => ({ ...prev, [field]: value }));
   };
 
-
   const handleEditFormSubmit = async () => {
+    if (!selectedAcademy || !user?.token) return;
     try {
-      const token = localStorage.getItem("token");
       const response = await axios.put(
-        `http://localhost:5000/api/academies/${selectedAcademy?.id}`,
+        `http://localhost:5000/api/academies/${selectedAcademy.id}`,
         editFormData,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${user.token}` } }
       );
-      setAcademies((prev) =>
-        prev.map((a) => (a.id === selectedAcademy?.id ? response.data : a))
+
+      setAcademies(prev =>
+        prev.map(a => (a.id === selectedAcademy.id ? response.data.academy || response.data : a))
       );
-      setIsEditModalOpen(false);
-      setSelectedAcademy(null);
+      closeModals();
     } catch (err: any) {
       alert(err.response?.data?.message || "Failed to update academy");
     }
   };
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -206,6 +200,21 @@ export default function AcademiesPage() {
       </DashboardLayout>
     );
   }
+  const handleClick = () => {
+    router.push("/pages/academy-admin/add-academy");
+  };
+
+
+
+
+
+
+
+
+
+
+
+
 
   return (
     <DashboardLayout>

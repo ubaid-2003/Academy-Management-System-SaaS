@@ -6,10 +6,8 @@ const { sequelize } = require("./src/models"); // Sequelize models
 // Import routes
 const authRoutes = require("./src/routes/auth");
 const academyRoutes = require("./src/routes/academyRoutes");
-const studentRoutes = require("./src/routes/studentRoutes"); // ✅ new
+const studentRoutes = require("./src/routes/studentRoutes");
 const teacherRoutes = require("./src/routes/teacherRoutes");
-
-// (later you’ll add teacherRoutes too)
 
 // Middleware
 const { authMiddleware, adminAuth } = require("./src/middleware/authMiddleware");
@@ -37,20 +35,9 @@ app.get("/", (req, res) => res.send("✅ API is running..."));
 // API Routes
 // =====================
 app.use("/api/auth", authRoutes);
-
-// Academies CRUD (only admins can manage academies)
 app.use("/api/academies", authMiddleware, adminAuth, academyRoutes);
-
-// Students CRUD (any authenticated academy admin can create/manage students)
 app.use("/api/students", authMiddleware, adminAuth, studentRoutes);
-
-app.use("/api", teacherRoutes);
-app.use("/api", studentRoutes);  // ✅ important
-
-
-
-// (later you’ll add teachers here)
-// app.use("/api/teachers", authMiddleware, adminAuth, teacherRoutes);
+app.use("/api/teachers", authMiddleware, adminAuth, teacherRoutes);
 
 // =====================
 // Global error handler
@@ -68,14 +55,29 @@ app.use((err, req, res, next) => {
 // =====================
 const PORT = process.env.PORT || 5000;
 
-sequelize
-  .sync({ alter: true }) // careful with alter in production
-  .then(() => {
-    console.log("✅ Database synced successfully");
-    app.listen(PORT, () =>
-      console.log(`🚀 Server running on http://localhost:${PORT}`)
-    );
-  })
-  .catch((err) => {
-    console.error("❌ Unable to sync database:", err);
-  });
+const startServer = async () => {
+  try {
+    if (process.env.NODE_ENV !== "production") {
+      console.log("⚙️  Development mode: syncing database using migrations...");
+
+      // DON'T use alter: true
+      // Use migrations instead: run `npx sequelize-cli db:migrate`
+      await sequelize.authenticate();
+      console.log("✅ Database connected (development)");
+    } else {
+      console.log("🔒 Production mode: connecting to database...");
+      await sequelize.authenticate();
+      console.log("✅ Database connected (production)");
+    }
+
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on http://localhost:${PORT}`);
+    });
+  } catch (err) {
+    console.error("❌ Failed to start server:", err);
+    process.exit(1);
+  }
+};
+
+
+startServer();

@@ -22,57 +22,56 @@ export default function LoginPage() {
     setForm(prev => ({ ...prev, [e.target.id]: e.target.value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setMessage('');
-    setLoading(true);
+const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  e.preventDefault();
+  setMessage('');
+  setLoading(true);
 
-    try {
-      const res = await fetch('http://localhost:5000/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      });
+  try {
+    const res = await fetch('http://localhost:5000/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(form),
+    });
 
-      const data = await res.json();
+    const data = await res.json();
 
-      if (!data.user) {
-        setMessage(data.message || 'Invalid credentials');
-        return;
-      }
-
-      // ❌ Reject anyone who is not Admin
-      if (data.user.role !== 'Admin') {
-        setMessage('Access denied: Only Admins can log in.');
-        return;
-      }
-
-      const loggedUser = {
-        id: data.user.id,              // Added user ID
-        fullName: data.user.fullName,  // Corrected property name
-        email: data.user.email,
-        role: data.user.role,
-        avatar: data.user.avatar || '',
-        token: data.token,
-        activeAcademyId: data.user.activeAcademyId,
-        academyIds: data.user.academyIds,
-      };
-
-      setUser(loggedUser);
-      localStorage.setItem("user", JSON.stringify(loggedUser));
-      localStorage.setItem("token", data.token);
-
-      router.push('/pages/dashboard');
-
-
-    } catch (err) {
-      console.error(err);
-      setMessage('Server error, please try again.');
-    } finally {
-      setLoading(false);
+    if (!res.ok || !data.user) {
+      setMessage(data.message || 'Invalid credentials');
+      return;
     }
-  };
 
+    // ❌ Optional: check by permission instead of role
+    if (!data.permissions.includes("create_academy")) {
+      setMessage('Access denied: You don’t have permission to create academies.');
+      return;
+    }
+
+    const loggedUser = {
+      id: data.user.id,
+      fullName: data.user.fullName,
+      email: data.user.email,
+      role: data.user.role,
+      avatar: data.user.avatar || '',
+      token: data.token,
+      activeAcademyId: data.user.activeAcademyId,
+      academyIds: data.user.academyIds,
+      permissions: data.permissions,
+    };
+
+    setUser(loggedUser);
+    localStorage.setItem("user", JSON.stringify(loggedUser));
+    localStorage.setItem("token", data.token);
+    localStorage.setItem("permissions", JSON.stringify(data.permissions));
+
+    router.push('/pages/dashboard');
+  } catch (err) {
+    console.error(err);
+    setMessage('Server error, please try again.');
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-blue-50 to-white">

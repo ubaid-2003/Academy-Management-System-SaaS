@@ -21,7 +21,7 @@ module.exports = (sequelize, DataTypes) => {
     {
       id: { type: DataTypes.INTEGER.UNSIGNED, primaryKey: true, autoIncrement: true },
       name: { type: DataTypes.STRING, allowNull: false },
-      registrationNumber: { type: DataTypes.STRING, allowNull: false, unique: true },
+      registrationNumber: { type: DataTypes.STRING, allowNull: false},
       address: DataTypes.STRING,
       city: DataTypes.STRING,
       province: DataTypes.STRING,
