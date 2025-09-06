@@ -16,13 +16,14 @@ export interface User {
   token: string;
   activeAcademyId?: number;
   academyIds?: number[];
+  permissions?: string[];
 }
 
 interface AuthContextType {
   user: User | null;
   setUser: (user: User | null) => void;
   logout: () => void;
-  updateActiveAcademy: (academyId: number) => Promise<void>;
+  updateActiveAcademy: (academyId?: number) => Promise<any>;
   canCreateAcademy: boolean;
   activeAcademyId?: number;
   academyIds: number[];
@@ -31,9 +32,9 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
-  setUser: () => { },
-  logout: () => { },
-  updateActiveAcademy: async () => { },
+  setUser: () => {},
+  logout: () => {},
+  updateActiveAcademy: async () => {},
   canCreateAcademy: false,
   activeAcademyId: undefined,
   academyIds: [],
@@ -54,6 +55,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const parsedUser: User = JSON.parse(storedUser);
         if (parsedUser.token) {
           setUser(parsedUser);
+          // auto-switch to first academy if no activeAcademyId
+          if (!parsedUser.activeAcademyId) {
+            updateActiveAcademy();
+          }
         }
       } catch (err) {
         console.error('Failed to parse stored user:', err);
@@ -78,11 +83,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // ✅ Switch active academy
-  const updateActiveAcademy = async (academyId: number) => {
+  const updateActiveAcademy = async (academyId?: number) => {
     if (!user?.token) return;
 
     try {
-      const res = await fetch(`${API_BASE_URL}/academies/switch/${academyId}`, {
+      const url = academyId
+        ? `${API_BASE_URL}/academies/switch/${academyId}`
+        : `${API_BASE_URL}/academies/switch`;
+
+      const res = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -102,11 +111,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         token: data.token || user.token,
         activeAcademyId: data.currentAcademy?.id ?? academyId,
         academyIds: data.academyIds || user.academyIds || [],
+        permissions: data.permissions || user.permissions || [],
       };
 
       setUser(updatedUser);
       localStorage.setItem('user', JSON.stringify(updatedUser));
       localStorage.setItem('token', updatedUser.token);
+
+      return data; // return data for updating stats etc.
     } catch (err) {
       console.error('Error switching academy:', err);
       alert('Failed to switch academy. Please try again.');
@@ -150,7 +162,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       {children}
     </AuthContext.Provider>
   );
-
 };
 
 export const useAuth = () => useContext(AuthContext);

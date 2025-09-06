@@ -14,6 +14,9 @@ module.exports = (sequelize, DataTypes) => {
 
       // One-to-many with UserAcademy
       Academy.hasMany(models.UserAcademy, { as: 'userAcademies', foreignKey: 'academyId' });
+
+      Academy.hasMany(models.Student, { foreignKey: "academyId", as: "students" });
+      Academy.hasMany(models.Teacher, { foreignKey: "academyId", as: "teachers" });
     }
   }
 
@@ -21,7 +24,7 @@ module.exports = (sequelize, DataTypes) => {
     {
       id: { type: DataTypes.INTEGER.UNSIGNED, primaryKey: true, autoIncrement: true },
       name: { type: DataTypes.STRING, allowNull: false },
-      registrationNumber: { type: DataTypes.STRING, allowNull: false},
+      registrationNumber: { type: DataTypes.STRING, allowNull: false },
       address: DataTypes.STRING,
       city: DataTypes.STRING,
       province: DataTypes.STRING,
@@ -29,8 +32,15 @@ module.exports = (sequelize, DataTypes) => {
       email: DataTypes.STRING,
       phone: DataTypes.STRING,
       principalName: DataTypes.STRING,
-      totalStudents: DataTypes.INTEGER.UNSIGNED,
-      status: { type: DataTypes.ENUM('Active','Inactive','Pending'), defaultValue: 'Pending' },
+      totalStudents: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0,   // ✅ jab create hoga to 0
+      },
+      totalTeachers: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0,   // ✅ jab create hoga to 0
+      },
+      status: { type: DataTypes.ENUM('Active', 'Inactive', 'Pending'), defaultValue: 'Pending' },
       facilities: DataTypes.TEXT,
       notes: DataTypes.TEXT,
     },

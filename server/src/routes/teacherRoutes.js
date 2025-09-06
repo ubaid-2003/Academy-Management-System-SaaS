@@ -2,45 +2,49 @@
 const express = require("express");
 const router = express.Router();
 const teacherController = require("../controllers/teacherController");
-const { authMiddleware, adminAuth } = require("../middleware/authMiddleware");
+const { authMiddleware } = require("../middleware/authMiddleware");
+const checkPermission = require("../middleware/checkPermission");
+const permissions = require("../contents/permissions");
 
 // ==================== TEACHER ROUTES ====================
 
-// ✅ Create teacher under an academy (Admins only)
+// Create teacher under an academy (requires CREATE_TEACHER permission)
 router.post(
   "/academies/:academyId/teachers",
   authMiddleware,
-  adminAuth,
+  checkPermission(permissions.CREATE_TEACHER),
   teacherController.createTeacher
 );
 
-// ✅ Get all teachers for an academy (Authenticated users)
+// Get all teachers for an academy (requires VIEW_TEACHER permission)
 router.get(
   "/academies/:academyId/teachers",
   authMiddleware,
+  checkPermission(permissions.VIEW_TEACHER),
   teacherController.getTeachersByAcademy
 );
 
-// ✅ Get single teacher by ID (Authenticated users)
+// Get single teacher by ID (requires VIEW_TEACHER permission)
 router.get(
   "/teachers/:id",
   authMiddleware,
+  checkPermission(permissions.VIEW_TEACHER),
   teacherController.getTeacherById
 );
 
-// ✅ Update teacher (Admins only)
+// Update teacher (requires UPDATE_TEACHER permission)
 router.put(
   "/teachers/:id",
   authMiddleware,
-  adminAuth,
+  checkPermission(permissions.UPDATE_TEACHER),
   teacherController.updateTeacher
 );
 
-// ✅ Delete teacher (Admins only)
+// Delete teacher (requires DELETE_TEACHER permission)
 router.delete(
   "/teachers/:id",
   authMiddleware,
-  adminAuth,
+  checkPermission(permissions.DELETE_TEACHER),
   teacherController.deleteTeacher
 );
 

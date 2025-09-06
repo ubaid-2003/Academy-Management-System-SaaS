@@ -9,9 +9,29 @@ const {
   getAcademyById,
   updateAcademy,
   deleteAcademy,
+  getAllAcademies,
   switchAcademy,
-  getAllAcademies
+  getAcademyStatsById,
+  getAcademyStats,
+  getActiveAcademyStats
 } = require("../controllers/academyController");
+
+// Stats for current active academy
+router.get(
+  "/stats",
+  authMiddleware,
+  checkPermission(permissions.VIEW_ACADEMY),
+  getActiveAcademyStats
+);
+
+// Stats for specific academy by ID
+router.get(
+  "/:id/stats",
+  authMiddleware,
+  checkPermission(permissions.VIEW_ACADEMY),
+  getAcademyStatsById
+);
+
 
 // ==================== ACADEMY ROUTES ====================
 

@@ -1,7 +1,7 @@
 const { Academy, User, UserAcademy, UserPermission, sequelize, Role } = require("../models");
 const jwt = require("jsonwebtoken"); // add this line
 
-
+// ==================== CREATE ACADEMY ====================
 const createAcademy = async (req, res) => {
   const t = await sequelize.transaction();
   try {
@@ -11,7 +11,6 @@ const createAcademy = async (req, res) => {
     const user = await User.findByPk(userId, { include: { model: Role, as: "role" } });
     if (!user) return res.status(401).json({ message: "User not found" });
 
-    // Destructure request body
     const {
       name,
       registrationNumber,
@@ -22,7 +21,6 @@ const createAcademy = async (req, res) => {
       email = null,
       phone = null,
       principalName,
-      totalStudents,
       status,
       facilities = null,
       notes = null,
@@ -37,7 +35,21 @@ const createAcademy = async (req, res) => {
 
     const [academy, created] = await Academy.findOrCreate({
       where: { registrationNumber: registrationNumber.trim() },
-      defaults: { name: name.trim(), address, city, province, country, email, phone, principalName: principalName.trim(), totalStudents, status, facilities, notes },
+      defaults: {
+        name: name.trim(),
+        address,
+        city,
+        province,
+        country,
+        email,
+        phone,
+        principalName: principalName.trim(),
+        totalStudents: 0,        // ✅ force always 0 on create
+        totalTeachers: 0,        // ✅ force always 0 on create
+        status,
+        facilities,
+        notes
+      },
       transaction: t,
     });
 
@@ -59,6 +71,78 @@ const createAcademy = async (req, res) => {
   }
 };
 
+
+// ==================== UPDATE ACADEMY ====================
+const updateAcademy = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = { ...req.body };
+
+    // ❌ Prevent users from updating counts manually
+    delete updates.totalStudents;
+    delete updates.totalTeachers;
+
+    const academy = await Academy.findByPk(id);
+    if (!academy) return res.status(404).json({ message: "Academy not found" });
+
+    if (updates.status) {
+      const validStatuses = ["Active", "Inactive", "Pending"];
+      if (!validStatuses.includes(updates.status))
+        return res.status(400).json({ message: `Invalid status. Must be one of ${validStatuses.join(", ")}` });
+    }
+
+    await academy.update(updates);
+    res.json({ message: "Academy updated successfully", academy });
+  } catch (err) {
+    console.error("UpdateAcademy error:", err);
+    res.status(500).json({ message: "Server error updating academy", error: err.message });
+  }
+};
+
+
+// ==================== GET ALL ACADEMIES ====================
+const getAllAcademies = async (req, res) => {
+  try {
+    const academies = await Academy.findAll({
+      include: [
+        {
+          model: User,
+          as: "users",
+          attributes: ["id", "fullName", "email", "roleId"],
+          through: { attributes: [] },
+        },
+      ],
+    });
+
+    if (!academies.length) return res.status(200).json({ message: "No academies found" });
+
+    // ✅ Fetch stats dynamically for each academy
+    const mapped = await Promise.all(
+      academies.map(async (academy) => {
+        const stats = await getAcademyStats(academy.id);
+        return {
+          id: academy.id,
+          name: academy.name,
+          status: academy.status,
+          principalName: academy.principalName,
+          totalStudents: stats.totalStudents,   // ✅ dynamic
+          totalTeachers: stats.totalTeachers,   // ✅ dynamic
+          users: academy.users.map((u) => ({
+            id: u.id,
+            fullName: u.fullName,
+            email: u.email,
+            roleId: u.roleId,
+          })),
+        };
+      })
+    );
+
+    res.json(mapped);
+  } catch (err) {
+    console.error("GetAllAcademies error:", err);
+    res.status(500).json({ message: "Server error fetching all academies", error: err.message });
+  }
+};
 
 // ==================== GET USER'S ACADEMIES ====================
 const getUserAcademies = async (req, res) => {
@@ -109,36 +193,16 @@ const getAcademyById = async (req, res) => {
     });
 
     if (!academy) return res.status(404).json({ message: "Academy not found" });
-    res.json(academy);
+
+    // Get stats
+    const stats = await getAcademyStats(id);
+
+    res.json({ ...academy.toJSON(), stats });   // ✅ stats included here
   } catch (err) {
     console.error("GetAcademyById error:", err);
     res.status(500).json({ message: "Server error fetching academy", error: err.message });
   }
 };
-
-// ==================== UPDATE ACADEMY ====================
-const updateAcademy = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const updates = req.body;
-
-    const academy = await Academy.findByPk(id);
-    if (!academy) return res.status(404).json({ message: "Academy not found" });
-
-    if (updates.status) {
-      const validStatuses = ["Active", "Inactive", "Pending"];
-      if (!validStatuses.includes(updates.status))
-        return res.status(400).json({ message: `Invalid status. Must be one of ${validStatuses.join(", ")}` });
-    }
-
-    await academy.update(updates);
-    res.json({ message: "Academy updated successfully", academy });
-  } catch (err) {
-    console.error("UpdateAcademy error:", err);
-    res.status(500).json({ message: "Server error updating academy", error: err.message });
-  }
-};
-
 // ==================== DELETE ACADEMY ====================
 const deleteAcademy = async (req, res) => {
   const t = await sequelize.transaction();
@@ -159,65 +223,44 @@ const deleteAcademy = async (req, res) => {
   }
 };
 
-// ==================== GET ALL ACADEMIES ====================
-const getAllAcademies = async (req, res) => {
-  try {
-    const academies = await Academy.findAll({
-      include: [
-        {
-          model: User,
-          as: "users",
-          attributes: ["id", "fullName", "email", "roleId"],
-          through: { attributes: [] },
-        },
-      ],
-    });
-
-    if (!academies.length) return res.status(200).json({ message: "No academies found" });
-
-    const mapped = academies.map((academy) => ({
-      id: academy.id,
-      name: academy.name,
-      status: academy.status,
-      principalName: academy.principalName,
-      totalStudents: academy.totalStudents,
-      users: academy.users.map((u) => ({
-        id: u.id,
-        fullName: u.fullName,
-        email: u.email,
-        roleId: u.roleId,
-      })),
-    }));
-
-    res.json(mapped);
-  } catch (err) {
-    console.error("GetAllAcademies error:", err);
-    res.status(500).json({ message: "Server error fetching all academies", error: err.message });
-  }
-};
-
 // ==================== SWITCH ACTIVE ACADEMY ====================
 const switchAcademy = async (req, res) => {
   try {
     const userId = req.user.id;
     let academyId = req.params.academyId ? parseInt(req.params.academyId, 10) : null;
 
+    // If no academyId given → use first academy
     if (!academyId) {
-      const firstAcademy = await UserAcademy.findOne({ where: { userId }, order: [["createdAt", "ASC"]] });
-      if (!firstAcademy) return res.status(400).json({ message: "No academies linked to user" });
+      const firstAcademy = await UserAcademy.findOne({
+        where: { userId },
+        order: [["createdAt", "ASC"]],
+      });
+      if (!firstAcademy)
+        return res.status(400).json({ message: "No academies linked to user" });
       academyId = firstAcademy.academyId;
     }
 
+    // Verify user has access to this academy
     const userAcademy = await UserAcademy.findOne({
       where: { userId, academyId },
       include: [{ model: Academy, as: "academy" }],
     });
 
-    if (!userAcademy) return res.status(403).json({ message: "Access denied to this academy" });
+    if (!userAcademy)
+      return res.status(403).json({ message: "Access denied to this academy" });
 
-    // Use JWT permissions instead of DB query
+    // ✅ Fetch academy stats
+    const stats = await getAcademyStats(academyId);
+
+    // ✅ Build currentAcademy response with dynamic totalStudents & Active status
+    const currentAcademy = {
+      ...userAcademy.academy.toJSON(),
+      totalStudents: stats.totalStudents, // override manual field
+      status: "Active", // always mark switched academy as active
+    };
+
+    // ✅ Issue new JWT
     const permissions = req.user.permissions || [];
-
     const token = jwt.sign(
       {
         id: userId,
@@ -231,6 +274,7 @@ const switchAcademy = async (req, res) => {
       { expiresIn: "1d" }
     );
 
+    // ✅ Send token in cookie
     res.cookie("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -238,15 +282,110 @@ const switchAcademy = async (req, res) => {
       maxAge: 24 * 60 * 60 * 1000,
     });
 
-    res.json({ success: true, token, currentAcademy: userAcademy.academy, role: req.user.role });
+    res.json({
+      success: true,
+      token,
+      currentAcademy, // updated academy details
+      stats,          // detailed stats
+      role: req.user.role,
+    });
   } catch (err) {
     console.error("SwitchAcademy error:", err);
-    res.status(500).json({ message: "Server error switching academy", error: err.message });
+    res
+      .status(500)
+      .json({ message: "Server error switching academy", error: err.message });
+  }
+};
+
+const getAcademyStats = async (academyId) => {
+  const { Student, Teacher } = require("../models");
+
+  const totalStudents = await Student.count({ where: { academyId } });
+  const activeStudents = await Student.count({ where: { academyId, status: "Active" } });
+  const inactiveStudents = await Student.count({ where: { academyId, status: "Inactive" } });
+
+  const totalTeachers = await Teacher.count({ where: { academyId } });
+
+  return {
+    totalStudents,
+    activeStudents,
+    inactiveStudents,
+    totalTeachers,
+  };
+};
+
+
+// ==================== ACTIVE ACADEMY STATS ====================
+const getActiveAcademyStats = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { Student, Teacher, Academy } = require("../models");
+
+    // Determine active academy
+    const activeAcademyId = req.user.activeAcademyId;
+    if (!activeAcademyId) {
+      return res.status(400).json({ message: "No active academy set for user" });
+    }
+
+    const academy = await Academy.findByPk(activeAcademyId);
+    if (!academy) return res.status(404).json({ message: "Active academy not found" });
+
+    const totalStudents = await Student.count({ where: { academyId: activeAcademyId } });
+    const totalTeachers = await Teacher.count({ where: { academyId: activeAcademyId } });
+
+    res.json({
+      academy: {
+        id: academy.id,
+        name: academy.name,
+        status: academy.status,
+      },
+      totalStudents,
+      totalTeachers,
+    });
+  } catch (err) {
+    console.error("getActiveAcademyStats error:", err);
+    res.status(500).json({ message: "Server error fetching active academy stats", error: err.message });
+  }
+};
+
+// ==================== SPECIFIC ACADEMY STATS BY ID ====================
+const getAcademyStatsById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { Student, Teacher, Academy } = require("../models");
+
+    const academyId = parseInt(id, 10);
+    if (!academyId) return res.status(400).json({ message: "Invalid academy ID" });
+
+    const academy = await Academy.findByPk(academyId);
+    if (!academy) return res.status(404).json({ message: "Academy not found" });
+
+    const totalStudents = await Student.count({ where: { academyId } });
+    const totalTeachers = await Teacher.count({ where: { academyId } });
+
+    res.json({
+      academy: {
+        id: academy.id,
+        name: academy.name,
+        status: academy.status,
+      },
+      totalStudents,
+      totalTeachers,
+    });
+  } catch (err) {
+    console.error("getAcademyStatsById error:", err);
+    res.status(500).json({ message: "Server error fetching academy stats", error: err.message });
   }
 };
 
 
+
+
+
+
 module.exports = {
+  getActiveAcademyStats,
+  getAcademyStatsById,
   createAcademy,
   getUserAcademies,
   getAcademyById,
@@ -254,4 +393,5 @@ module.exports = {
   deleteAcademy,
   getAllAcademies,
   switchAcademy,
+  getAcademyStats
 };

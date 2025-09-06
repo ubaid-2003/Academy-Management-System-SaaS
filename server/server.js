@@ -36,8 +36,8 @@ app.get("/", (req, res) => res.send("✅ API is running..."));
 // =====================
 app.use("/api/auth", authRoutes);
 app.use("/api/academies", authMiddleware, adminAuth, academyRoutes);
-app.use("/api/students", authMiddleware, adminAuth, studentRoutes);
-app.use("/api/teachers", authMiddleware, adminAuth, teacherRoutes);
+app.use("/api", authMiddleware, adminAuth, studentRoutes);
+app.use("/api", authMiddleware, adminAuth, teacherRoutes);
 
 // =====================
 // Global error handler

@@ -1,6 +1,6 @@
-// src/app/layout.tsx
 'use client';
-import { AuthProvider } from './context/AuthContext';
+import { AcademyProvider } from "../../src/app/context/AcademyContext";
+import { AuthProvider } from "../../src/app/context/AuthContext";
 import './globals.css';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -8,7 +8,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <AuthProvider>
-          {children}
+          <AcademyProvider>
+            {children}
+          </AcademyProvider>
         </AuthProvider>
       </body>
     </html>

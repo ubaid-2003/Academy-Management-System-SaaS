@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "../context/AuthContext";
+import { useAcademy } from '../context/AcademyContext'; 
 import {
     Home,
     Users,
@@ -40,7 +41,6 @@ type AcademyStats = {
     activeStudents: number;
     pendingEnrollments: number;
     monthlyRevenue: number;
-    completionRate: number;
 };
 
 type NavItem = {
@@ -68,6 +68,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     // ✅ useAuth (single source of truth)
     const { user, setUser, logout, updateActiveAcademy } = useAuth();
 
+    interface AcademyStats {
+        totalStudents: number;
+        totalTeachers: number;
+        activeStudents: number;
+        inactiveStudents: number; // ✅ add this
+        totalCourses: number;
+        totalClasses: number;
+    }
+
     // ------------------ LOCALSTORAGE COLLAPSE ------------------
     useEffect(() => {
         const collapsedState = localStorage.getItem("sidebar-collapsed") === "true";
@@ -78,9 +87,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         localStorage.setItem("sidebar-collapsed", String(collapsed));
     }, [collapsed]);
 
-    // ------------------ FETCH ACADEMIES ------------------
     useEffect(() => {
-        const fetchAcademies = async () => {
+        const fetchUserAcademies = async () => {
             if (!user?.token) return;
             setLoadingAcademies(true);
             setError(null);
@@ -90,76 +98,42 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     headers: { Authorization: `Bearer ${user.token}` },
                 });
 
-                if (!res.ok) throw new Error("Failed to fetch academies");
                 const data = await res.json();
 
-                if (Array.isArray(data)) {
-                    setAcademies(data);
-                    if (!user.activeAcademyId && data.length > 0) {
-                        await updateActiveAcademy(data[0].id);
-                    }
-                } else if (data?.message === "No academy created yet.") {
-                    setAcademies([]);
-                } else {
-                    throw new Error("Unexpected API response");
+                if (!res.ok) {
+                    throw new Error(data.message || "Failed to fetch academies");
+                }
+
+                // Ensure data is always an array
+                const academiesArray: Academy[] = Array.isArray(data) ? data : [];
+
+                setAcademies(academiesArray);
+
+                // Set active academy if not already set
+                if (!user.activeAcademyId && academiesArray.length > 0) {
+                    const updatedToken = await updateActiveAcademy(academiesArray[0].id);
+                    setUser({
+                        ...user,
+                        token: updatedToken,
+                        activeAcademyId: academiesArray[0].id,
+                    });
                 }
             } catch (err: any) {
                 console.error(err);
                 setError(err.message || "Something went wrong");
-                setAcademies([]);
             } finally {
                 setLoadingAcademies(false);
             }
         };
 
-        fetchAcademies();
+        fetchUserAcademies();
     }, [user?.token]);
 
-    // ------------------ FETCH ACADEMY STATS ------------------
-    useEffect(() => {
-        const fetchAcademyStats = async () => {
-            if (!user?.token || !user?.activeAcademyId) return;
-            setLoadingStats(true);
+    const activeAcademy = academies.find(a => a.id === user?.activeAcademyId) || null;
 
-            try {
-                const res = await fetch(`http://localhost:5000/api/academies/${user.activeAcademyId}/stats`, {
-                    headers: { Authorization: `Bearer ${user.token}` },
-                });
-
-                if (!res.ok) throw new Error("Failed to fetch academy stats");
-                const stats = await res.json();
-                setAcademyStats(stats);
-            } catch (err: any) {
-                console.error("Error fetching academy stats:", err);
-                // Set default stats if API fails
-                setAcademyStats({
-                    totalStudents: 0,
-                    totalTeachers: 0,
-                    totalCourses: 0,
-                    totalClasses: 0,
-                    activeStudents: 0,
-                    pendingEnrollments: 0,
-                    monthlyRevenue: 0,
-                    completionRate: 0,
-                });
-            } finally {
-                setLoadingStats(false);
-            }
-        };
-
-        fetchAcademyStats();
-    }, [user?.token, user?.activeAcademyId]);
-
-    // ------------------ COMPUTE ACTIVE ACADEMY ------------------
-    const activeAcademy = academies.find(
-        (a) => a.id === user?.activeAcademyId
-    );
-
-    // ------------------ LOGOUT ------------------
     const handleLogout = () => {
         logout();
         setAcademies([]);
-        setAcademyStats(null);
         router.replace("/auth/login");
     };
 
@@ -168,8 +142,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         { label: "Dashboard", href: "/pages/dashboard", icon: Home },
         { label: "My Academies", href: "/pages/academy-admin/academies", icon: Building2 },
         { label: "Add Academy", href: "/pages/academy-admin/add-academy", icon: GraduationCap },
-        { label: "Manage Teachers", href: "/pages/academy-admin/teachers", icon: UserCheck },
-        { label: "Manage Students", href: "/pages/academy-admin/students", icon: Users },
+        { label: "Manage Teachers", href: "/pages/academy-admin/add-teachers", icon: UserCheck },
+        { label: "Manage Students", href: "/pages/academy-admin/add-students", icon: Users },
         { label: "Courses", href: "/pages/academy-admin/courses", icon: BookOpen },
         { label: "Classes", href: "/pages/academy-admin/classes", icon: Calendar },
         { label: "Analytics", href: "/pages/academy-admin/analytics", icon: BarChart },
@@ -225,17 +199,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="flex h-screen bg-slate-50">
             {/* Mobile Menu Overlay */}
             {mobileMenuOpen && (
-                <div 
-                    className="fixed inset-0 z-40 bg-black bg-opacity-50 md:hidden" 
-                    onClick={() => setMobileMenuOpen(false)} 
+                <div
+                    className="fixed inset-0 z-40 bg-black bg-opacity-50 md:hidden"
+                    onClick={() => setMobileMenuOpen(false)}
                 />
             )}
 
             {/* Academy Dropdown Overlay */}
             {academyDropdownOpen && (
-                <div 
-                    className="fixed inset-0 z-30" 
-                    onClick={() => setAcademyDropdownOpen(false)} 
+                <div
+                    className="fixed inset-0 z-30"
+                    onClick={() => setAcademyDropdownOpen(false)}
                 />
             )}
 
@@ -256,34 +230,34 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     )}
 
                     {/* Collapse Button */}
-                    <button 
-                        onClick={() => setCollapsed(!collapsed)} 
+                    <button
+                        onClick={() => setCollapsed(!collapsed)}
                         className="hidden p-2 transition-all rounded-lg md:flex text-slate-400 hover:bg-slate-100 hover:text-slate-600"
                     >
                         {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
                     </button>
 
                     {/* Mobile Close */}
-                    <button 
-                        onClick={() => setMobileMenuOpen(false)} 
+                    <button
+                        onClick={() => setMobileMenuOpen(false)}
                         className="p-2 transition-colors rounded-lg md:hidden text-slate-400 hover:bg-slate-100"
                     >
                         <X className="w-5 h-5" />
                     </button>
                 </div>
-                
+
                 {/* Navigation */}
                 <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
                     {navigationItems.map(item => {
                         const Icon = item.icon;
                         const isActive = pathname.startsWith(item.href);
                         return (
-                            <button 
-                                key={item.label} 
-                                onClick={() => { 
-                                    router.push(item.href); 
-                                    setMobileMenuOpen(false); 
-                                }} 
+                            <button
+                                key={item.label}
+                                onClick={() => {
+                                    router.push(item.href);
+                                    setMobileMenuOpen(false);
+                                }}
                                 className={`w-full flex items-center space-x-4 px-4 py-3 rounded-xl transition-all duration-200 group ${collapsed ? "justify-center" : ""} ${isActive ? "bg-slate-200 text-slate-900 font-semibold" : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"}`}
                             >
                                 <Icon className={`flex-shrink-0 w-5 h-5 transition-colors ${isActive ? "text-slate-900" : ""}`} />
@@ -307,8 +281,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             </div>
                         </div>
                     )}
-                    <button 
-                        onClick={handleLogout} 
+                    <button
+                        onClick={handleLogout}
                         className={`flex items-center space-x-3 p-3 w-full rounded-xl hover:bg-red-50 text-red-600 transition-all duration-200 font-medium ${collapsed ? "justify-center" : ""}`}
                     >
                         <LogOut className="w-5 h-5" />
@@ -323,9 +297,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <header className="flex items-center justify-between h-20 px-6 bg-white border-b shadow-sm border-slate-200">
                     {/* Left */}
                     <div className="flex items-center gap-4">
-                        <button 
-                            onClick={() => setMobileMenuOpen(true)} 
-                            aria-label="Open sidebar menu" 
+                        <button
+                            onClick={() => setMobileMenuOpen(true)}
+                            aria-label="Open sidebar menu"
                             className="p-2 transition rounded-lg md:hidden text-slate-500 hover:text-slate-700 hover:bg-slate-100"
                         >
                             <Menu className="w-5 h-5" />
@@ -408,12 +382,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
                         {/* Search */}
                         <div className="relative hidden sm:block">
-                            <input 
-                                type="text" 
-                                placeholder="Search students, teachers..." 
-                                value={searchQuery} 
-                                onChange={handleSearchChange} 
-                                className="w-64 py-2 pl-10 pr-4 text-sm transition border rounded-xl border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-500 focus:outline-none" 
+                            <input
+                                type="text"
+                                placeholder="Search students, teachers..."
+                                value={searchQuery}
+                                onChange={handleSearchChange}
+                                className="w-64 py-2 pl-10 pr-4 text-sm transition border rounded-xl border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-500 focus:outline-none"
                             />
                             <Search className="absolute w-4 h-4 -translate-y-1/2 text-slate-400 left-3 top-1/2" />
                         </div>
@@ -423,14 +397,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         </button>
 
                         {/* Notifications */}
-                        {/* <button className="relative p-2 transition rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100">
+                        <button className="relative p-2 transition rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100">
                             <Bell className="w-5 h-5" />
-                            {academyStats?.pendingEnrollments > 0 && (
-                                <span className="absolute flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full -top-1 -right-1">
-                                    {academyStats.pendingEnrollments > 9 ? '9+' : academyStats.pendingEnrollments}
-                                </span>
-                            )}
-                        </button> */}
+
+                        </button>
 
                         {/* Desktop User */}
                         <div className="items-center hidden gap-3 pl-3 border-l md:flex border-slate-200">
@@ -452,86 +422,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 {/* Content Area */}
                 <section className="h-[calc(100vh-5rem)] overflow-y-auto p-6">
                     <div className="mx-auto max-w-7xl">
-                        {/* Academy Stats Dashboard - Show only on dashboard page */}
-                        {pathname === '/pages/dashboard' && activeAcademy && academyStats && (
-                            <div className="mb-6">
-                                <div className="mb-6">
-                                    <h2 className="mb-2 text-xl font-bold text-slate-800">Academy Overview</h2>
-                                    <p className="text-slate-600">Manage and monitor your academy performance</p>
-                                </div>
 
-                                {loadingStats ? (
-                                    <div className="grid grid-cols-1 gap-6 mb-6 md:grid-cols-2 lg:grid-cols-4">
-                                        {[...Array(8)].map((_, i) => (
-                                            <div key={i} className="p-6 bg-white border shadow-sm rounded-xl border-slate-200 animate-pulse">
-                                                <div className="h-4 mb-2 rounded bg-slate-200"></div>
-                                                <div className="h-8 mb-1 rounded bg-slate-200"></div>
-                                                <div className="w-1/2 h-3 rounded bg-slate-200"></div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="grid grid-cols-1 gap-6 mb-6 md:grid-cols-2 lg:grid-cols-4">
-                                        <StatCard
-                                            icon={Users}
-                                            label="Total Students"
-                                            value={academyStats.totalStudents}
-                                            subtext={`${academyStats.activeStudents} active`}
-                                            color="blue"
-                                        />
-                                        <StatCard
-                                            icon={UserCheck}
-                                            label="Total Teachers"
-                                            value={academyStats.totalTeachers}
-                                            subtext="Active instructors"
-                                            color="green"
-                                        />
-                                        <StatCard
-                                            icon={BookOpen}
-                                            label="Total Courses"
-                                            value={academyStats.totalCourses}
-                                            subtext="Available courses"
-                                            color="purple"
-                                        />
-                                        <StatCard
-                                            icon={Calendar}
-                                            label="Total Classes"
-                                            value={academyStats.totalClasses}
-                                            subtext="Scheduled classes"
-                                            color="orange"
-                                        />
-                                        <StatCard
-                                            icon={TrendingUp}
-                                            label="Completion Rate"
-                                            value={`${academyStats.completionRate}%`}
-                                            subtext="Course completion"
-                                            color="teal"
-                                        />
-                                        <StatCard
-                                            icon={Bell}
-                                            label="Pending Enrollments"
-                                            value={academyStats.pendingEnrollments}
-                                            subtext="Awaiting approval"
-                                            color="red"
-                                        />
-                                        <StatCard
-                                            icon={BarChart}
-                                            label="Monthly Revenue"
-                                            value={`$${academyStats.monthlyRevenue.toLocaleString()}`}
-                                            subtext="This month"
-                                            color="green"
-                                        />
-                                        <StatCard
-                                            icon={GraduationCap}
-                                            label="Academy Rating"
-                                            value="4.8"
-                                            subtext="Based on reviews"
-                                            color="purple"
-                                        />
-                                    </div>
-                                )}
-                            </div>
-                        )}
                         {children}
                     </div>
                 </section>

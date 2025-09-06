@@ -1,5 +1,5 @@
 "use client";
-
+import axios from "axios";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Search, Plus, Edit, Eye, Trash2, Filter, X, User, Mail, Phone, BookOpen, Calendar, ChevronDown, MapPin, Users, GraduationCap, Home, Shield } from "lucide-react";
@@ -25,13 +25,16 @@ interface Student {
     country: string;
     fatherName: string;
     motherName: string;
-    guardianContact: string;
+    guardianName: string;      // ✅ added
+    guardianPhone: string;     // ✅ added
     bloodGroup: string;
     enrollmentDate: string;
     status: string;
     notes: string;
     teacherIds: number[];
+    rollNumber: number | string; // safer typing
 }
+
 
 // -----------------------------
 // Component
@@ -69,28 +72,37 @@ const StudentRegistrationPage: React.FC = () => {
         country: "Pakistan",
         fatherName: "",
         motherName: "",
-        guardianContact: "",
+        guardianName: "",       // ✅
+        guardianPhone: "",      // ✅
         bloodGroup: "",
         enrollmentDate: "",
         status: "Active",
         notes: "",
-        teacherIds: []
+        teacherIds: [],
+        rollNumber: ""          // ✅ initialize
     });
 
     // -----------------------------
     // Fetch Students from Backend
     // -----------------------------
     const fetchStudents = async () => {
-        const token = localStorage.getItem("token");
         try {
-            const res = await fetch("http://localhost:5000/api/students", {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (!res.ok) throw new Error("Failed to fetch students");
-            const data = await res.json();
-            setStudents(data.students || []);
+            const user = JSON.parse(localStorage.getItem("user") || "{}");
+            const token = user?.token;
+
+            if (!token) {
+                router.push("/login");
+                return;
+            }
+
+            const res = await axios.get(
+                `http://localhost:5000/api/academies/${user.activeAcademyId}/students`,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+
+            setStudents(res.data);
         } catch (err) {
-            console.error("Fetch students error:", err);
+            console.error("Error fetching students:", err);
         }
     };
 
@@ -118,11 +130,14 @@ const StudentRegistrationPage: React.FC = () => {
     // -----------------------------
     const filteredStudents = students.filter((student) => {
         const matchesSearch = [student.firstName, student.lastName, student.email, student.registrationNumber]
-            .some((field) => field.toLowerCase().includes(searchTerm.toLowerCase()));
+            .some((field) => (field || "").toLowerCase().includes(searchTerm.toLowerCase()));
+
         const matchesStatus = filterStatus === "All" || student.status === filterStatus;
         const matchesClass = filterClass === "All" || student.class === filterClass;
+
         return matchesSearch && matchesStatus && matchesClass;
     });
+
 
     // -----------------------------
     // Handlers
@@ -144,20 +159,56 @@ const StudentRegistrationPage: React.FC = () => {
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        const token = localStorage.getItem("token");
-
-        const payload = {
-            ...formData,
-            registrationNumber: formData.registrationNumber || generateRegistrationNumber(),
-        };
 
         try {
-            if (editingStudent !== null) {
-                // Update existing student
-                const studentId = students[editingStudent]?.id;
-                if (!studentId) throw new Error("Student ID is missing");
+            const token = localStorage.getItem("token");
+            if (!token) {
+                console.error("Token is missing. Please login first.");
+                return;
+            }
 
-                const res = await fetch(`http://localhost:5000/api/students/${studentId}`, {
+            const user = JSON.parse(localStorage.getItem("user") || "{}");
+            const academyId = user?.activeAcademyId;
+            if (!academyId) {
+                console.error("Academy ID is missing");
+                return;
+            }
+
+            // Prepare payload with safe defaults
+            const payload = {
+                firstName: formData.firstName || "",
+                lastName: formData.lastName || "",
+                email: formData.email || "",
+                phone: formData.phone || "",
+                rollNumber: formData.rollNumber || generateRegistrationNumber(), // required
+                guardianName: formData.guardianName || "", // required
+                guardianPhone: formData.guardianPhone || "", // required
+                dateOfBirth: formData.dateOfBirth || null,
+                gender: formData.gender || "",
+                class: formData.class || "",
+                section: formData.section || "",
+                address: formData.address || "",
+                city: formData.city || "",
+                province: formData.province || "",
+                country: formData.country || "Pakistan",
+                fatherName: formData.fatherName || "",
+                motherName: formData.motherName || "",
+                enrollmentDate: formData.enrollmentDate || null,
+                status: formData.status || "Active",
+                notes: formData.notes || "",
+                teacherIds: formData.teacherIds || [],
+                academyId
+            };
+
+
+            let res: Response;
+
+            if (editingStudent !== null) {
+                // 🔹 Update existing student
+                const studentId = students[editingStudent]?.id;
+                if (!studentId) throw new Error("Student ID is missing for update");
+
+                res = await fetch(`http://localhost:5000/api/students/${studentId}`, {
                     method: "PUT",
                     headers: {
                         "Content-Type": "application/json",
@@ -165,10 +216,9 @@ const StudentRegistrationPage: React.FC = () => {
                     },
                     body: JSON.stringify(payload),
                 });
-                if (!res.ok) throw new Error("Failed to update student");
             } else {
-                // Create new student
-                const res = await fetch("http://localhost:5000/api/students", {
+                // 🔹 Create new student
+                res = await fetch(`http://localhost:5000/api/academies/${academyId}/students`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -176,15 +226,28 @@ const StudentRegistrationPage: React.FC = () => {
                     },
                     body: JSON.stringify(payload),
                 });
-                if (!res.ok) throw new Error("Failed to create student");
             }
 
+            const data = await res.json();
+
+            if (!res.ok) {
+                console.error("Backend error:", data);
+                throw new Error(data.message || "Failed to create/update student");
+            }
+
+            console.log("Student saved successfully:", data);
+
+            // Refresh student list and reset form
             await fetchStudents();
             resetForm();
-        } catch (err) {
-            console.error("Submit error:", err);
+
+        } catch (err: any) {
+            console.error("Submit error:", err.message || err);
+            alert(err.message || "An error occurred while saving the student.");
         }
     };
+
+
 
     const resetForm = () => {
         setFormData({
@@ -203,16 +266,19 @@ const StudentRegistrationPage: React.FC = () => {
             country: "Pakistan",
             fatherName: "",
             motherName: "",
-            guardianContact: "",
+            guardianName: "",     // ✅
+            guardianPhone: "",    // ✅
             bloodGroup: "",
             enrollmentDate: "",
             status: "Active",
             notes: "",
-            teacherIds: []
+            teacherIds: [],
+            rollNumber: ""        // ✅
         });
         setShowForm(false);
         setEditingStudent(null);
     };
+
 
     const handleEdit = (index: number) => {
         setFormData(students[index]);
@@ -254,9 +320,7 @@ const StudentRegistrationPage: React.FC = () => {
 
         if (status === "Active") {
             bgColor = "bg-green-100 text-green-800";
-        } else if (status === "Graduated") {
-            bgColor = "bg-blue-100 text-blue-800";
-        } else if (status === "Transferred") {
+        } else if (status === "Suspended") {
             bgColor = "bg-yellow-100 text-yellow-800";
         } else if (status === "Inactive") {
             bgColor = "bg-red-100 text-red-800";
@@ -417,8 +481,14 @@ const StudentRegistrationPage: React.FC = () => {
                             </div>
                             <div className="md:col-span-2">
                                 <div className="flex justify-between">
-                                    <span className="text-gray-600">Guardian Contact:</span>
-                                    <span className="font-medium">{student.guardianContact}</span>
+                                    <span className="text-gray-600">Guardian Name:</span>
+                                    <span className="font-medium">{student.guardianName}</span>
+                                </div>
+                            </div>
+                            <div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-600">Guardian Phone :</span>
+                                    <span className="font-medium">{student.guardianName}</span>
                                 </div>
                             </div>
                         </div>
@@ -489,6 +559,17 @@ const StudentRegistrationPage: React.FC = () => {
                                         type="text"
                                         name="firstName"
                                         value={formData.firstName}
+                                        onChange={handleInputChange}
+                                        required
+                                        className="w-full px-4 py-2 transition border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block mb-2 font-medium text-gray-700">First Name *</label>
+                                    <input
+                                        type="text"
+                                        name="rollNumber"
+                                        value={formData.rollNumber}
                                         onChange={handleInputChange}
                                         required
                                         className="w-full px-4 py-2 transition border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -650,8 +731,7 @@ const StudentRegistrationPage: React.FC = () => {
                                     >
                                         <option value="Active">Active</option>
                                         <option value="Inactive">Inactive</option>
-                                        <option value="Graduated">Graduated</option>
-                                        <option value="Transferred">Transferred</option>
+                                        <option value="Suspended">Suspended</option>
                                     </select>
                                 </div>
                             </div>
@@ -741,16 +821,28 @@ const StudentRegistrationPage: React.FC = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block mb-2 font-medium text-gray-700">Guardian Contact *</label>
+                                    <label className="block mb-2 font-medium text-gray-700">Guardian Name *</label>
                                     <input
-                                        type="tel"
-                                        name="guardianContact"
-                                        value={formData.guardianContact}
+                                        type="text"
+                                        name="guardianName"
+                                        value={formData.guardianName}
                                         onChange={handleInputChange}
                                         required
                                         className="w-full px-4 py-2 transition border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                     />
                                 </div>
+                                <div>
+                                    <label className="block mb-2 font-medium text-gray-700">Guardian Phone *</label>
+                                    <input
+                                        type="tel"
+                                        name="guardianPhone"
+                                        value={formData.guardianPhone}
+                                        onChange={handleInputChange}
+                                        required
+                                        className="w-full px-4 py-2 transition border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    />
+                                </div>
+
                             </div>
                         </div>
 
@@ -978,7 +1070,9 @@ const StudentRegistrationPage: React.FC = () => {
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <div className="text-sm text-gray-900">Father: {student.fatherName}</div>
                                                 <div className="text-sm text-gray-900">Mother: {student.motherName}</div>
-                                                <div className="text-sm text-gray-500">Contact: {student.guardianContact}</div>
+                                                <div className="text-sm text-gray-500">Contact: {student.guardianName}</div>
+                                                <div className="text-sm text-gray-500">Contact: {student.guardianPhone}</div>
+
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <StatusBadge status={student.status} />

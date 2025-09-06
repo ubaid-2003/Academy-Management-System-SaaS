@@ -1,5 +1,6 @@
 "use client";
 
+import axios from "axios";
 import React, { useState, useEffect } from "react";
 import {
   Search,
@@ -25,6 +26,7 @@ import {
 
 
 import DashboardLayout from "@/app/components/DashboardLayout";
+import { useRouter } from "next/navigation";
 
 // ================= TYPES =================
 interface Teacher {
@@ -32,25 +34,24 @@ interface Teacher {
   firstName: string;
   lastName: string;
   email: string;
-  phone: string;
-  dateOfBirth: string;
-  gender: "Male" | "Female" | "Other" | "";
-  address: string;
-  city: string;
-  province: string;
+  phone?: string;
+  dateOfBirth?: string;
+  gender: "male" | "female" | "other" | "";
+  address?: string;
+  city?: string;
+  province?: string;
   country: string;
-  qualification: string;
-  subjectSpecialization: string;
-  dateOfJoining: string;
+  qualification?: string;
+  experienceYears?: number;
   employeeId: string;
-  emergencyContactName: string;
-  emergencyContactPhone: string;
-  bloodGroup: string;
-  status: "Active" | "Inactive" | "Retired" | "Transferred" | "Resigned" | "On Leave";
-  notes: string;
+  status: "active" | "inactive" | "suspended";
+  subjects: string[]; // JSON array of subjects
+  academyId?: number;
 }
 
 const TeacherManagementPage: React.FC = () => {
+  const router = useRouter();
+
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
@@ -73,78 +74,83 @@ const TeacherManagementPage: React.FC = () => {
     lastName: "",
     email: "",
     phone: "",
+    gender: "male",
     dateOfBirth: "",
-    gender: "",
+    employeeId: "",
+    qualification: "",
+    experienceYears: 0,
     address: "",
     city: "",
     province: "",
     country: "Pakistan",
-    qualification: "",
-    subjectSpecialization: "",
-    dateOfJoining: "",
-    employeeId: "",
-    emergencyContactName: "",
-    emergencyContactPhone: "",
-    bloodGroup: "",
-    status: "Active",
-    notes: "",
+    status: "active",
+    subjects: [],
   });
 
+
   // ================= API CALLS =================
+
+  // Fetch all teachers for the active academy
   const fetchTeachers = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/teachers", {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setTeachers(Array.isArray(data.teachers) ? data.teachers : []);
-      } else {
-        console.error("Error fetching teachers:", data.message);
-      }
-    } catch (err) {
-      console.error("Server error fetching teachers:", err);
-    }
-  };
-  const createTeacher = async (teacherData: any) => {
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) throw new Error("Not authorized");
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      const token = user?.token;
 
-      // remove empty string fields so backend doesn’t reject
-      const filteredData = Object.fromEntries(
-        Object.entries(teacherData).filter(([_, v]) => v !== "" && v !== null && v !== undefined)
+      if (!token) {
+        router.push("/login");
+        return;
+      }
+
+      const res = await axios.get(
+        `http://localhost:5000/api/academies/${user.activeAcademyId}/teachers`,
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      const res = await fetch("http://localhost:5000/api/teachers", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(filteredData),
-      });
+      setTeachers(res.data);
+    } catch (err) {
+      console.error("Error fetching students:", err);
+    }
+  };
+
+  // ================= CREATE TEACHER =================
+  const createTeacher = async (academyId: number, teacherData: Teacher) => {
+    try {
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      if (!user?.token || !academyId) throw new Error("Not authorized");
+
+      // ✅ Ensure academyId is included in the payload
+      const payload = {
+        ...teacherData,
+        academyId,
+      };
+
+      const res = await fetch(
+        `http://localhost:5000/api/academies/${academyId}/teachers`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${user.token}`,
+          },
+          body: JSON.stringify(payload),
+        }
+      );
 
       if (!res.ok) {
-        let errorMsg = "Failed to create teacher";
-        try {
-          const error = await res.json();
-          errorMsg = error.message || error.errors?.join(", ") || errorMsg;
-          console.error("Backend create error response:", error);
-        } catch (parseErr) {
-          console.error("Could not parse backend error JSON:", parseErr);
-        }
-        throw new Error(errorMsg);
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error.message || "Failed to create teacher");
       }
 
       return await res.json();
     } catch (err) {
-      console.error("Create Teacher Error (frontend):", err);
+      console.error("Create Teacher Error:", err);
       throw err;
     }
   };
 
 
+
+  // Update teacher
   const updateTeacher = async (id: number, updatedData: any) => {
     try {
       const token = localStorage.getItem("token");
@@ -159,38 +165,40 @@ const TeacherManagementPage: React.FC = () => {
         body: JSON.stringify(updatedData),
       });
 
-      // 🔥 If error, print full response
       if (!res.ok) {
-        let errorMsg = "Failed to update teacher";
-        try {
-          const error = await res.json();
-          errorMsg = error.message || error.error || errorMsg;
-          console.error("Backend error response:", error);
-        } catch (parseErr) {
-          console.error("Could not parse error JSON:", parseErr);
-        }
-        throw new Error(errorMsg);
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error.message || "Failed to update teacher");
       }
 
       return await res.json();
     } catch (err) {
-      console.error("Update Teacher Error (frontend):", err);
+      console.error("Update Teacher Error:", err);
       throw err;
     }
   };
 
-
-
+  // Delete teacher
   const deleteTeacher = async (id: number) => {
-    const res = await fetch(`http://localhost:5000/api/teachers/${id}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-    });
-    if (!res.ok) throw new Error("Failed to delete teacher");
-    return res.json();
+    try {
+      const res = await fetch(`http://localhost:5000/api/teachers/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error.message || "Failed to delete teacher");
+      }
+
+      return await res.json();
+    } catch (err) {
+      console.error("Delete Teacher Error:", err);
+      throw err;
+    }
   };
 
   // ================= FORM HANDLERS =================
+
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
@@ -198,27 +206,24 @@ const TeacherManagementPage: React.FC = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  // ✅ Reset form correctly
   const resetForm = () => {
     setFormData({
       firstName: "",
       lastName: "",
       email: "",
       phone: "",
+      gender: "male",
       dateOfBirth: "",
-      gender: "",
+      employeeId: "",
+      qualification: "",
+      experienceYears: 0,
       address: "",
       city: "",
       province: "",
       country: "Pakistan",
-      qualification: "",
-      subjectSpecialization: "",
-      dateOfJoining: "",
-      employeeId: "",
-      emergencyContactName: "",
-      emergencyContactPhone: "",
-      bloodGroup: "",
-      status: "Active",
-      notes: "",
+      status: "active",
+      subjects: [],
     });
     setEditingTeacher(null);
     setShowForm(false);
@@ -227,13 +232,18 @@ const TeacherManagementPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      const academyId = user?.activeAcademyId; // make sure your AuthContext sets this
+
+      if (!academyId) throw new Error("No active academy selected");
+
       if (editingTeacher) {
         // UPDATE
         const updated = await updateTeacher(editingTeacher.id!, formData);
         setTeachers((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
       } else {
         // CREATE
-        const created = await createTeacher(formData);
+        const created = await createTeacher(academyId, formData);
         setTeachers((prev) => [...prev, created]);
       }
       resetForm();
@@ -242,8 +252,10 @@ const TeacherManagementPage: React.FC = () => {
     }
   };
 
+
+  // ✅ Edit handler fixed
   const handleEdit = (teacher: Teacher) => {
-    setFormData(teacher);
+    setFormData(teacher); // copy selected teacher into form
     setEditingTeacher(teacher);
     setShowForm(true);
   };
@@ -259,9 +271,12 @@ const TeacherManagementPage: React.FC = () => {
   };
 
   // ================= EFFECT =================
+
   useEffect(() => {
     fetchTeachers();
   }, []);
+
+
   // ================= FILTERS =================
   const clearFilters = () => {
     setSearchTerm("");
@@ -269,14 +284,16 @@ const TeacherManagementPage: React.FC = () => {
     setFilterSubject("All");
   };
 
-  const subjects = ["All", ...Array.from(new Set(teachers.map((t) => t.subjectSpecialization)))];
+  const subjects = ["All", ...Array.from(new Set(teachers.map((t) => t.subjects)))];
   const statuses = ["All", "Active", "Inactive", "On Leave"];
 
   const filteredTeachers = teachers.filter((teacher) => {
     const matchesSearch = [teacher.firstName, teacher.lastName, teacher.email, teacher.employeeId]
       .some((field) => field?.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesStatus = filterStatus === "All" || teacher.status === filterStatus;
-    const matchesSubject = filterSubject === "All" || teacher.subjectSpecialization === filterSubject;
+    const matchesSubject =
+      filterSubject === "All" ||
+      (Array.isArray(teacher.subjects) && teacher.subjects.includes(filterSubject));
     return matchesSearch && matchesStatus && matchesSubject;
   });
 
@@ -335,11 +352,11 @@ const TeacherManagementPage: React.FC = () => {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Date of Birth:</span>
-                    <span className="font-medium">{new Date(teacher.dateOfBirth).toLocaleDateString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Blood Group:</span>
-                    <span className="font-medium">{teacher.bloodGroup}</span>
+                    <span className="font-medium">
+                      {teacher.dateOfBirth
+                        ? new Date(teacher.dateOfBirth).toLocaleDateString()
+                        : "N/A"}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -382,11 +399,12 @@ const TeacherManagementPage: React.FC = () => {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Subject:</span>
-                    <span className="font-medium text-purple-600">{teacher.subjectSpecialization}</span>
+                    <span className="font-medium text-purple-600">
+                      {Array.isArray(teacher.subjects) ? teacher.subjects.join(", ") : teacher.subjects}
+                    </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Date of Joining:</span>
-                    <span className="font-medium">{new Date(teacher.dateOfJoining).toLocaleDateString()}</span>
+
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Status:</span>
@@ -404,22 +422,14 @@ const TeacherManagementPage: React.FC = () => {
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Name:</span>
-                    <span className="font-medium">{teacher.emergencyContactName}</span>
+                    <span className="font-medium">{teacher.phone}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Phone:</span>
-                    <span className="font-medium">{teacher.emergencyContactPhone}</span>
+                    <span className="font-medium">{teacher.phone}</span>
                   </div>
                 </div>
               </div>
-
-              {/* Notes */}
-              {teacher.notes && (
-                <div className="p-4 rounded-lg bg-gray-50">
-                  <h3 className="mb-4 font-semibold text-gray-800">Notes</h3>
-                  <p className="text-gray-700">{teacher.notes}</p>
-                </div>
-              )}
             </div>
           </div>
 
@@ -521,25 +531,6 @@ const TeacherManagementPage: React.FC = () => {
                     required
                     className="w-full px-4 py-2 transition border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
-                </div>
-                <div>
-                  <label className="block mb-2 font-medium text-gray-700">Blood Group</label>
-                  <select
-                    name="bloodGroup"
-                    value={formData.bloodGroup}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2 transition border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">Select Blood Group</option>
-                    <option value="A+">A+</option>
-                    <option value="A-">A-</option>
-                    <option value="B+">B+</option>
-                    <option value="B-">B-</option>
-                    <option value="AB+">AB+</option>
-                    <option value="AB-">AB-</option>
-                    <option value="O+">O+</option>
-                    <option value="O-">O-</option>
-                  </select>
                 </div>
               </div>
             </div>
@@ -647,28 +638,23 @@ const TeacherManagementPage: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block mb-2 font-medium text-gray-700">Subject Specialization *</label>
+                  <label className="block mb-2 font-medium text-gray-700">Subjects</label>
                   <input
                     type="text"
-                    name="subjectSpecialization"
-                    value={formData.subjectSpecialization}
-                    onChange={handleInputChange}
-                    required
-                    placeholder="e.g., Mathematics"
+                    name="subjects"
+                    value={Array.isArray(formData.subjects) ? formData.subjects.join(", ") : formData.subjects || ""}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        subjects: e.target.value.split(",").map((s) => s.trim()),
+                      })
+                    }
+                    placeholder="e.g., Mathematics, Physics"
                     className="w-full px-4 py-2 transition border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
-                <div>
-                  <label className="block mb-2 font-medium text-gray-700">Date of Joining *</label>
-                  <input
-                    type="date"
-                    name="dateOfJoining"
-                    value={formData.dateOfJoining}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-4 py-2 transition border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
+
+
                 <div>
                   <label className="block mb-2 font-medium text-gray-700">Employee ID</label>
                   <input
@@ -703,47 +689,7 @@ const TeacherManagementPage: React.FC = () => {
                 <Phone className="w-5 h-5 mr-2 text-red-600" />
                 Emergency Contact
               </h3>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div>
-                  <label className="block mb-2 font-medium text-gray-700">Emergency Contact Name *</label>
-                  <input
-                    type="text"
-                    name="emergencyContactName"
-                    value={formData.emergencyContactName}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-4 py-2 transition border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block mb-2 font-medium text-gray-700">Emergency Contact Phone *</label>
-                  <input
-                    type="tel"
-                    name="emergencyContactPhone"
-                    value={formData.emergencyContactPhone}
-                    onChange={handleInputChange}
-                    required
-                    placeholder="+92-300-7654321"
-                    className="w-full px-4 py-2 transition border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-              </div>
-            </div>
 
-            {/* Notes */}
-            <div className="mb-6">
-              <h3 className="pb-2 mb-4 text-lg font-semibold text-gray-700 border-b border-gray-200">Additional Notes</h3>
-              <div>
-                <label className="block mb-2 font-medium text-gray-700">Notes</label>
-                <textarea
-                  name="notes"
-                  value={formData.notes}
-                  onChange={handleInputChange}
-                  rows={4}
-                  placeholder="Any additional notes about the teacher..."
-                  className="w-full px-4 py-2 transition border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
             </div>
           </div>
 
@@ -827,7 +773,7 @@ const TeacherManagementPage: React.FC = () => {
                 </div>
                 <div className="ml-4">
                   <h3 className="text-3xl font-bold text-gray-800">
-                    {teachers.filter(t => t.status === "Active").length}
+                    {teachers.filter(t => t.status === "active").length}
                   </h3>
                   <p className="text-sm font-medium text-gray-600">Active Teachers</p>
                 </div>
@@ -839,12 +785,6 @@ const TeacherManagementPage: React.FC = () => {
                 <div className="p-3 rounded-lg bg-gradient-to-r from-yellow-500 to-yellow-600">
                   <Calendar className="w-8 h-8 text-white" />
                 </div>
-                <div className="ml-4">
-                  <h3 className="text-3xl font-bold text-gray-800">
-                    {teachers.filter(t => t.status === "On Leave").length}
-                  </h3>
-                  <p className="text-sm font-medium text-gray-600">On Leave</p>
-                </div>
               </div>
             </div>
 
@@ -855,7 +795,11 @@ const TeacherManagementPage: React.FC = () => {
                 </div>
                 <div className="ml-4">
                   <h3 className="text-3xl font-bold text-gray-800">
-                    {Array.from(new Set(teachers.map(t => t.subjectSpecialization))).length}
+                    {Array.from(
+                      new Set(
+                        teachers.flatMap(t => Array.isArray(t.subjects) ? t.subjects : [t.subjects])
+                      )
+                    ).length}
                   </h3>
                   <p className="text-sm font-medium text-gray-600">Subjects Taught</p>
                 </div>
@@ -915,18 +859,7 @@ const TeacherManagementPage: React.FC = () => {
                   </select>
                 </div>
 
-                <div>
-                  <label className="block mb-2 font-medium text-gray-700">Filter by Subject</label>
-                  <select
-                    value={filterSubject}
-                    onChange={(e) => setFilterSubject(e.target.value)}
-                    className="w-full px-4 py-2 transition border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    {subjects.map((subject) => (
-                      <option key={subject} value={subject}>{subject}</option>
-                    ))}
-                  </select>
-                </div>
+
 
                 <div className="flex items-end">
                   <div className="text-sm text-gray-600">
@@ -1020,7 +953,7 @@ const TeacherManagementPage: React.FC = () => {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center text-sm font-medium text-gray-900">
                             <BookOpen className="w-4 h-4 mr-2 text-purple-500" />
-                            {teacher.subjectSpecialization}
+                            {teacher.subjects}
                           </div>
                           <div className="text-sm text-gray-500">{teacher.qualification}</div>
                         </td>

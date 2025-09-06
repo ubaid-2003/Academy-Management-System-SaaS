@@ -1,38 +1,16 @@
+// src/controllers/studentController.js
+const { Student, Teacher, Academy, TeacherStudents, sequelize } = require("../models");
+const jwt = require("jsonwebtoken");
+
 // controllers/studentController.js
-const db = require("../models");
-const { Op } = require("sequelize");
-
-const { sequelize, Academy, Student, Teacher, TeacherStudents, UserAcademy } = db;
-
-exports.createStudent = async (req, res) => {
+const createStudent = async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    console.log("✅ Available models:", Object.keys(db)); 
-
-    const userId = req.user?.id;
-    const role = req.user?.role?.toLowerCase();
-
-    if (!userId) {
-      await t.rollback();
-      return res.status(401).json({ message: "Unauthorized: You must be logged in" });
-    }
-    if (!["admin", "academy_admin"].includes(role)) {
-      await t.rollback();
-      return res.status(403).json({ message: "Forbidden: Only academy admins can create students" });
-    }
-
-    const userAcademy = await UserAcademy.findOne({ where: { userId }, transaction: t });
-    if (!userAcademy) {
-      await t.rollback();
-      return res.status(403).json({ message: "You are not linked to any academy" });
-    }
-
-    const academyId = userAcademy.academyId;
-    let {
+    const {
       firstName,
       lastName,
       email,
-      phone,
+      phone,            // ✅ include phone
       dateOfBirth,
       gender,
       rollNumber,
@@ -46,40 +24,18 @@ exports.createStudent = async (req, res) => {
       guardianName,
       guardianPhone,
       guardianRelation,
-      teacherIds,
-      status,
+      status = "active",
+      teacherIds = [],
+      academyId,
     } = req.body;
 
-    // Auto-generate rollNumber
-    if (!rollNumber) {
-      const lastStudent = await Student.findOne({
-        where: { academyId },
-        order: [["createdAt", "DESC"]],
-        transaction: t,
-      });
-
-      const lastId = lastStudent ? lastStudent.id : 0;
-      rollNumber = `STU${academyId}-${lastId + 1}`;
-    }
-
-    const existingStudent = await Student.findOne({
-      where: {
-        academyId,
-        [Op.or]: [{ rollNumber }, { email }],
-      },
-      transaction: t,
-    });
-    if (existingStudent) {
-      await t.rollback();
-      return res.status(400).json({ message: "Student with this rollNumber or email already exists in this academy" });
-    }
-
+    // Create student
     const student = await Student.create(
       {
         firstName,
         lastName,
         email,
-        phone,
+        phone,             // ✅ add here too
         dateOfBirth,
         gender,
         rollNumber,
@@ -94,135 +50,139 @@ exports.createStudent = async (req, res) => {
         guardianPhone,
         guardianRelation,
         academyId,
-        status: status || "active",
+        status,
       },
       { transaction: t }
     );
 
-    // ✅ Manually insert teacher-student links with academyId
-    if (Array.isArray(teacherIds) && teacherIds.length) {
-      const teachers = await Teacher.findAll({
-        where: { id: teacherIds, academyId },
+
+    // Fetch all teachers of the academy
+    const teachers = await Teacher.findAll({ where: { academyId }, transaction: t });
+
+    // Auto-link new student with all teachers in the academy
+    if (teachers.length > 0) {
+      const links = teachers.map(tchr => ({
+        teacherId: tchr.id,
+        studentId: student.id,
+        academyId,
+      }));
+
+      await TeacherStudents.bulkCreate(links, {
         transaction: t,
+        ignoreDuplicates: true, // prevents duplicate entries
       });
-
-      if (teachers.length) {
-        const teacherLinks = teachers.map((teacher) => ({
-          teacherId: teacher.id,
-          studentId: student.id,
-          academyId: academyId,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        }));
-
-        await TeacherStudents.bulkCreate(teacherLinks, { transaction: t });
-      }
     }
 
     await t.commit();
-
-    const createdStudent = await Student.findByPk(student.id, {
-      include: [
-        { model: Teacher, as: "teachers", through: { attributes: [] } },
-        { model: Academy, as: "academy" },
-      ],
-    });
-
-    return res.status(201).json(createdStudent);
+    return res.status(201).json({ message: "Student created successfully", student });
   } catch (error) {
     await t.rollback();
-    console.error("❌ Error creating student:", error);
-    res.status(500).json({ message: "Error creating student", error: error.message });
+    console.error(error);
+    return res.status(500).json({ message: "Error creating student", error: error.message });
   }
 };
 
 
-// ==========================
-// Get All Students by Academy
-// ==========================
-exports.getStudentsByAcademy = async (req, res) => {
+// ==================== DELETE STUDENT ====================
+const deleteStudent = async (req, res) => {
+  const t = await sequelize.transaction();
+  try {
+    const { id } = req.params;
+    const student = await Student.findByPk(id);
+    if (!student) return res.status(404).json({ message: "Student not found" });
+
+    const academyId = student.academyId;
+
+    await TeacherStudents.destroy({ where: { studentId: id }, transaction: t });
+    await student.destroy({ transaction: t });
+
+    // ✅ Decrement totalStudents
+    await Academy.decrement("totalStudents", { by: 1, where: { id: academyId }, transaction: t });
+
+    await t.commit();
+    res.json({ message: "Student deleted successfully" });
+  } catch (err) {
+    await t.rollback();
+    console.error("DeleteStudent error:", err);
+    res.status(500).json({ message: "Server error deleting student", error: err.message });
+  }
+};
+
+
+// ==================== GET STUDENTS BY ACADEMY ====================
+const getStudentsByAcademy = async (req, res) => {
   try {
     const { academyId } = req.params;
     const students = await Student.findAll({
       where: { academyId },
       include: [
-        { model: Teacher, as: 'teachers', through: { attributes: [] } },
-        { model: Academy, as: 'academy' }
-      ]
+        { model: Teacher, as: "teachers", attributes: ["id", "firstName", "lastName"], through: { attributes: [] } },
+      ],
     });
     res.json(students);
-  } catch (error) {
-    console.error('Error fetching students:', error);
-    res.status(500).json({ message: 'Error fetching students', error: error.message });
+  } catch (err) {
+    console.error("GetStudentsByAcademy error:", err);
+    res.status(500).json({ message: "Server error fetching students", error: err.message });
   }
 };
 
-// ==========================
-// Get Single Student by ID
-// ==========================
-exports.getStudentById = async (req, res) => {
+// ==================== GET SINGLE STUDENT ====================
+const getStudentById = async (req, res) => {
   try {
     const { id } = req.params;
     const student = await Student.findByPk(id, {
       include: [
-        { model: Teacher, as: 'teachers', through: { attributes: [] } },
-        { model: Academy, as: 'academy' }
-      ]
+        { model: Teacher, as: "primaryTeacher", attributes: ["id", "firstName", "lastName"] },
+        { model: Teacher, as: "teachers", attributes: ["id", "firstName", "lastName"], through: { attributes: [] } },
+      ],
     });
-    if (!student) return res.status(404).json({ message: 'Student not found' });
+    if (!student) return res.status(404).json({ message: "Student not found" });
     res.json(student);
-  } catch (error) {
-    console.error('Error fetching student:', error);
-    res.status(500).json({ message: 'Error fetching student', error: error.message });
+  } catch (err) {
+    console.error("GetStudentById error:", err);
+    res.status(500).json({ message: "Server error fetching student", error: err.message });
   }
 };
 
-// ==========================
-// Update Student
-// ==========================
-exports.updateStudent = async (req, res) => {
+// ==================== UPDATE STUDENT ====================
+const updateStudent = async (req, res) => {
+  const t = await sequelize.transaction();
   try {
     const { id } = req.params;
-    const { teacherIds, ...updateData } = req.body;
+    const updates = req.body;
 
     const student = await Student.findByPk(id);
-    if (!student) return res.status(404).json({ message: 'Student not found' });
+    if (!student) return res.status(404).json({ message: "Student not found" });
 
-    await student.update(updateData);
+    // Update student fields
+    await student.update(updates, { transaction: t });
 
-    // Update teachers in junction table
-    if (Array.isArray(teacherIds)) {
-      const teachers = await Teacher.findAll({ where: { id: teacherIds } });
-      await student.setTeachers(teachers);
+    // Optional: update many-to-many teachers
+    if (updates.teacherIds) {
+      // Remove old links
+      await TeacherStudents.destroy({ where: { studentId: id }, transaction: t });
+      // Add new links
+      const links = updates.teacherIds.map((teacherId) => ({
+        teacherId,
+        studentId: id,
+        academyId: student.academyId,
+      }));
+      await TeacherStudents.bulkCreate(links, { transaction: t });
     }
 
-    const updatedStudent = await Student.findByPk(id, {
-      include: [
-        { model: Teacher, as: 'teachers', through: { attributes: [] } },
-        { model: Academy, as: 'academy' }
-      ]
-    });
-
-    res.json(updatedStudent);
-  } catch (error) {
-    console.error('Error updating student:', error);
-    res.status(500).json({ message: 'Error updating student', error: error.message });
+    await t.commit();
+    res.json({ message: "Student updated successfully", student });
+  } catch (err) {
+    await t.rollback();
+    console.error("UpdateStudent error:", err);
+    res.status(500).json({ message: "Server error updating student", error: err.message });
   }
 };
 
-// ==========================
-// Delete Student
-// ==========================
-exports.deleteStudent = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const student = await Student.findByPk(id);
-    if (!student) return res.status(404).json({ message: 'Student not found' });
-
-    await student.destroy();
-    res.json({ message: 'Student deleted successfully' });
-  } catch (error) {
-    console.error('Error deleting student:', error);
-    res.status(500).json({ message: 'Error deleting student', error: error.message });
-  }
+module.exports = {
+  createStudent,
+  getStudentsByAcademy,
+  getStudentById,
+  updateStudent,
+  deleteStudent,
 };
