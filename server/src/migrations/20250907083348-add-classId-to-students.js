@@ -1,12 +1,12 @@
 'use strict';
 
 module.exports = {
-  async up(queryInterface, Sequelize) {
+  up: async (queryInterface, Sequelize) => {
     await queryInterface.addColumn('students', 'classId', {
-      type: Sequelize.INTEGER.UNSIGNED,
+      type: Sequelize.INTEGER.UNSIGNED, // Must match classes.id
       allowNull: true,
       references: {
-        model: 'classes',
+        model: 'classes', // table name
         key: 'id',
       },
       onUpdate: 'CASCADE',
@@ -14,7 +14,7 @@ module.exports = {
     });
   },
 
-  async down(queryInterface, Sequelize) {
+  down: async (queryInterface, Sequelize) => {
     await queryInterface.removeColumn('students', 'classId');
-  },
+  }
 };

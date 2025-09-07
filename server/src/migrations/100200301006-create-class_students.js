@@ -8,7 +8,6 @@ module.exports = {
         autoIncrement: true,
         primaryKey: true,
       },
-
       class_id: {
         type: Sequelize.INTEGER.UNSIGNED,
         allowNull: false,
@@ -16,7 +15,6 @@ module.exports = {
         onUpdate: "CASCADE",
         onDelete: "CASCADE",
       },
-
       student_id: {
         type: Sequelize.INTEGER.UNSIGNED,
         allowNull: false,
@@ -24,7 +22,6 @@ module.exports = {
         onUpdate: "CASCADE",
         onDelete: "CASCADE",
       },
-
       created_at: {
         type: Sequelize.DATE,
         allowNull: false,
@@ -33,13 +30,11 @@ module.exports = {
       updated_at: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.literal(
-          "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
-        ),
+        defaultValue: Sequelize.literal("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"),
       },
     });
 
-    // Prevent duplicate student assignment to the same class
+    // prevent duplicate enrollment (same student in same class)
     await queryInterface.addConstraint("class_students", {
       fields: ["class_id", "student_id"],
       type: "unique",
@@ -47,7 +42,7 @@ module.exports = {
     });
   },
 
-  async down(queryInterface, Sequelize) {
+  async down(queryInterface) {
     await queryInterface.dropTable("class_students");
   },
 };

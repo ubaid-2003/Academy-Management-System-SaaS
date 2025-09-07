@@ -1,24 +1,27 @@
-"use strict";
-const { Model } = require("sequelize");
+'use strict';
+const { Model } = require('sequelize');
 
 module.exports = (sequelize, DataTypes) => {
   class ClassTeachers extends Model {
     static associate(models) {
-      // A record belongs to one Class
+      // Each ClassTeachers record belongs to one Class
       ClassTeachers.belongsTo(models.Class, {
-        foreignKey: "classId",
-        as: "class",
-        onDelete: "CASCADE",
-        onUpdate: "CASCADE",
+        foreignKey: 'classId',
+        as: 'class',
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE',
       });
 
-      // A record belongs to one Teacher
+      // Each ClassTeachers record belongs to one Teacher
       ClassTeachers.belongsTo(models.Teacher, {
-        foreignKey: "teacherId",
-        as: "teacher",
-        onDelete: "CASCADE",
-        onUpdate: "CASCADE",
+        foreignKey: 'teacherId',
+        as: 'teacher',
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE',
       });
+
+      // No need to call models.Class.hasMany(...) here!
+      // The parent models (Class, Teacher) will define hasMany in their own models.
     }
   }
 
@@ -32,18 +35,18 @@ module.exports = (sequelize, DataTypes) => {
       classId: {
         type: DataTypes.INTEGER.UNSIGNED,
         allowNull: false,
-        field: "class_id",
+        field: 'class_id',
       },
       teacherId: {
         type: DataTypes.INTEGER.UNSIGNED,
         allowNull: false,
-        field: "teacher_id",
+        field: 'teacher_id',
       },
     },
     {
       sequelize,
-      modelName: "ClassTeachers",
-      tableName: "class_teachers",
+      modelName: 'ClassTeachers',
+      tableName: 'class_teachers',
       underscored: true,
       timestamps: true,
     }

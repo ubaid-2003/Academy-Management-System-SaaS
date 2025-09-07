@@ -1,10 +1,11 @@
+// models/Student.js
 'use strict';
 const { Model } = require('sequelize');
 
 module.exports = (sequelize, DataTypes) => {
   class Student extends Model {
     static associate(models) {
-      // Belongs to one Academy
+      // Student belongs to Academy
       Student.belongsTo(models.Academy, {
         foreignKey: 'academyId',
         as: 'academy',
@@ -12,7 +13,7 @@ module.exports = (sequelize, DataTypes) => {
         onUpdate: 'CASCADE',
       });
 
-      // Many-to-many: Student <-> Teacher (through teacher_students)
+      // Many-to-many with Teacher
       Student.belongsToMany(models.Teacher, {
         through: models.TeacherStudents,
         foreignKey: 'studentId',
@@ -20,32 +21,12 @@ module.exports = (sequelize, DataTypes) => {
         as: 'teachers',
       });
 
-      Student.hasMany(models.TeacherStudents, {
-        foreignKey: 'studentId',
-        as: 'teacherLinks',
-        onDelete: 'CASCADE',
-        onUpdate: 'CASCADE',
-      });
-
-      // ✅ NEW: Many-to-many: Student <-> Class (through class_students)
+      // Many-to-many with Class
       Student.belongsToMany(models.Class, {
         through: models.ClassStudents,
         foreignKey: 'studentId',
         otherKey: 'classId',
         as: 'classes',
-      });
-
-      Student.belongsTo(models.Class, {
-        foreignKey: 'classId',
-        as: 'class',
-      });
-
-      // Direct access to junction table if needed
-      Student.hasMany(models.ClassStudents, {
-        foreignKey: 'studentId',
-        as: 'classLinks',
-        onDelete: 'CASCADE',
-        onUpdate: 'CASCADE',
       });
     }
   }
@@ -55,23 +36,34 @@ module.exports = (sequelize, DataTypes) => {
       id: { type: DataTypes.INTEGER.UNSIGNED, autoIncrement: true, primaryKey: true },
       firstName: { type: DataTypes.STRING, allowNull: false },
       lastName: { type: DataTypes.STRING, allowNull: false },
-      email: { type: DataTypes.STRING, allowNull: false, validate: { isEmail: true } },
+      email: { type: DataTypes.STRING, allowNull: false, unique: true },
       phone: { type: DataTypes.STRING, allowNull: false },
-      dateOfBirth: { type: DataTypes.DATEONLY },
-      gender: { type: DataTypes.ENUM('male', 'female', 'other') },
-      rollNumber: { type: DataTypes.STRING, allowNull: false },
+      dateOfBirth: { type: DataTypes.DATEONLY, allowNull: false },
+      gender: { type: DataTypes.ENUM('male', 'female', 'other'), allowNull: false },
+      rollNumber: { type: DataTypes.STRING, allowNull: false, unique: true },
       grade: { type: DataTypes.STRING },
       section: { type: DataTypes.STRING },
-      permanentAddress: { type: DataTypes.TEXT },
-      currentAddress: { type: DataTypes.TEXT },
+      enrollmentDate: { type: DataTypes.DATEONLY },
+      bloodGroup: { type: DataTypes.STRING },
+      address: { type: DataTypes.TEXT },
       city: { type: DataTypes.STRING },
       province: { type: DataTypes.STRING },
       country: { type: DataTypes.STRING, defaultValue: 'Pakistan' },
+      fatherName: { type: DataTypes.STRING },
+      motherName: { type: DataTypes.STRING },
       guardianName: { type: DataTypes.STRING, allowNull: false },
       guardianPhone: { type: DataTypes.STRING, allowNull: false },
-      guardianRelation: { type: DataTypes.STRING },
+      notes: { type: DataTypes.TEXT },
       status: { type: DataTypes.ENUM('active', 'inactive', 'suspended'), defaultValue: 'active' },
       academyId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
+      classId: {
+        type: DataTypes.INTEGER.UNSIGNED,
+        allowNull: true,
+        references: {
+          model: 'classes',
+          key: 'id',
+        },
+      },
     },
     {
       sequelize,

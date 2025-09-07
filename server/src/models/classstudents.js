@@ -4,7 +4,6 @@ const { Model } = require("sequelize");
 module.exports = (sequelize, DataTypes) => {
   class ClassStudents extends Model {
     static associate(models) {
-      // A record belongs to one Class
       ClassStudents.belongsTo(models.Class, {
         foreignKey: "classId",
         as: "class",
@@ -12,7 +11,6 @@ module.exports = (sequelize, DataTypes) => {
         onUpdate: "CASCADE",
       });
 
-      // A record belongs to one Student
       ClassStudents.belongsTo(models.Student, {
         foreignKey: "studentId",
         as: "student",
@@ -24,21 +22,9 @@ module.exports = (sequelize, DataTypes) => {
 
   ClassStudents.init(
     {
-      id: {
-        type: DataTypes.INTEGER.UNSIGNED,
-        autoIncrement: true,
-        primaryKey: true,
-      },
-      classId: {
-        type: DataTypes.INTEGER.UNSIGNED,
-        allowNull: false,
-        field: "class_id",
-      },
-      studentId: {
-        type: DataTypes.INTEGER.UNSIGNED,
-        allowNull: false,
-        field: "student_id",
-      },
+      id: { type: DataTypes.INTEGER.UNSIGNED, autoIncrement: true, primaryKey: true },
+      classId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, field: "class_id" },
+      studentId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, field: "student_id" },
     },
     {
       sequelize,

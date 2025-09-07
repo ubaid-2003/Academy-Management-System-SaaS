@@ -38,9 +38,14 @@ interface Class {
     capacity: number;
     status: string;
     assignedTeacher?: Teacher | null;
-    assignedStudents: Student[];
+    students?: Student[];
     enrolledStudents?: number;
+    assignedStudents?: Student[];   // already added earlier
+    studentAssignments?: Student[]; // ✅ add this if different from assignedStudents
 }
+
+
+
 
 // -----------------------------
 // Component
@@ -52,12 +57,16 @@ const ClassManagementPage: React.FC = () => {
     // State
     const [classes, setClasses] = useState<Class[]>([]);
     const [teachers, setTeachers] = useState<Teacher[]>([]);
-    const [students, setStudents] = useState<Student[]>([]);
     const [showForm, setShowForm] = useState(false);
     const [showTeacherModal, setShowTeacherModal] = useState(false);
     const [showStudentModal, setShowStudentModal] = useState(false);
     const [editingClass, setEditingClass] = useState<number | null>(null);
     const [managingClassIndex, setManagingClassIndex] = useState<number | null>(null);
+    // state (add these near other useState declarations)
+    const [students, setStudents] = useState<Student[]>([]);
+    const [studentSearch, setStudentSearch] = useState("");
+    const [isSavingStudents, setIsSavingStudents] = useState(false);
+
     const [formData, setFormData] = useState<Class>({
         name: "",
         section: "",
@@ -105,37 +114,176 @@ const ClassManagementPage: React.FC = () => {
         }
     };
 
-    const fetchStudents = async () => {
-        if (!currentAcademy) return;
 
+    const fetchTeachers = async () => {
+        if (!currentAcademy?.id) return;
         try {
             const token = localStorage.getItem("token");
             const res = await axios.get(
-                `http://localhost:5000/api/academies/${currentAcademy?.id}/students/`
-                , { headers: { Authorization: `Bearer ${token}` } }
+                `http://localhost:5000/api/academies/${currentAcademy.id}/teachers`,
+                { headers: { Authorization: `Bearer ${token}` } }
             );
 
-            setStudents(res.data.students || []);
+            // Handle both cases (array or wrapped in { teachers: [] })
+            const data = Array.isArray(res.data) ? res.data : res.data.teachers;
+
+            setTeachers(
+                (data || []).map((t: any) => ({
+                    id: t.id,
+                    name: t.firstName && t.lastName ? `${t.firstName} ${t.lastName}` : t.name,
+                    subject: t.subject || (t.specialization ?? "N/A"),
+                    email: t.email
+                }))
+            );
+        } catch (err) {
+            console.error("Error fetching teachers:", err);
+        }
+    };
+
+    const fetchStudents = async () => {
+        if (!currentAcademy?.id) return;
+        try {
+            const user = JSON.parse(localStorage.getItem("user") || "{}");
+            const token = user?.token;
+            if (!token) return;
+
+            const res = await axios.get(
+                `http://localhost:5000/api/academies/${currentAcademy.id}/students`,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+
+            const data = Array.isArray(res.data)
+                ? res.data
+                : res.data.students || res.data.data || [];
+
+            const normalized: Student[] = (data || []).map((s: any) => ({
+                id: s.id,
+                name: s.firstName && s.lastName ? `${s.firstName} ${s.lastName}` : s.name,
+                rollNumber: s.rollNumber || `STD-${s.id}`,
+                grade: s.grade || s.gradeLevel || "",
+            }));
+
+            setStudents(normalized);
         } catch (err) {
             console.error("Error fetching students:", err);
         }
     };
 
-    const fetchTeachers = async () => {
-        if (!currentAcademy?.id) return;
+    const openStudentModal = (classIndex: number) => {
+        setManagingClassIndex(classIndex);
+        fetchStudents();
+        setShowStudentModal(true);
 
+        // Pre-load already assigned students from class
+        const assigned = classes[classIndex]?.students?.map((s: any) => s.id) || [];
+        setSelectedStudents(assigned);
+    };
+
+
+    const handleAssignTeacher = async (classIndex: number) => {
+        setManagingClassIndex(classIndex);
+        const teacherId = classes[classIndex]?.assignedTeacher?.id ?? null;
+        setSelectedTeacher(teacherId);
+        await fetchTeachers(); // <-- fetch list before showing modal
+        setShowTeacherModal(true);
+    };
+
+    // updated handleAssignStudents -> fetch students before opening modal and set currently selected
+    const handleAssignStudents = async (classIndex: number) => {
+        setManagingClassIndex(classIndex);
+
+        const cls = classes[classIndex] || {};
+        // try multiple possible keys that might contain already-assigned students:
+        const assignedIds =
+            (cls.assignedStudents && cls.assignedStudents.map((s: any) => s.id)) ||
+            (cls.students && cls.students.map((s: any) => s.id)) ||
+            (cls.studentAssignments && cls.studentAssignments.map((r: any) => r.student?.id || r.studentId)) ||
+            [];
+
+        setSelectedStudents(assignedIds || []);
+        await fetchStudents();
+        setStudentSearch("");
+        setShowStudentModal(true);
+    };
+
+
+
+    const saveTeacherAssignment = async () => {
+        if (managingClassIndex === null) return;
         try {
-            const token = localStorage.getItem("token");
-            const res = await axios.get(
-                `http://localhost:5000/api/academies/${currentAcademy.id}/teachers/`, // ✅ note trailing slash
+            const user = JSON.parse(localStorage.getItem("user") || "{}");
+            const token = user?.token;
+            const classId = classes[managingClassIndex]?.id;
+            if (!token || !classId) return;
+
+            // Save assignment
+            await axios.put(
+                `http://localhost:5000/api/academies/${currentAcademy?.id}/classes/${classId}/assign-teacher`,
+                { teacherId: selectedTeacher },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
 
-            setTeachers(res.data.teachers || []); // ✅ save in state
+            // Update locally (no reload)
+            const teacher = teachers.find(t => t.id === selectedTeacher) ?? null;
+            const updatedClass = {
+                ...classes[managingClassIndex],
+                assignedTeacher: teacher
+            };
+
+            setClasses(prev =>
+                prev.map((cls, idx) => (idx === managingClassIndex ? updatedClass : cls))
+            );
+
         } catch (err) {
-            console.error("Error fetching teachers:", err);
+            console.error("Failed to save teacher assignment", err);
+            alert("Failed to save teacher assignment");
         }
+
+        setShowTeacherModal(false);
+        setManagingClassIndex(null);
+        setSelectedTeacher(null);
     };
+
+
+    const saveStudentAssignment = async () => {
+        if (managingClassIndex === null) return;
+
+        try {
+            const user = JSON.parse(localStorage.getItem("user") || "{}");
+            const token = user?.token;
+            const classId = classes[managingClassIndex]?.id;
+            if (!token || !classId) return;
+
+            // Save assignment
+            await axios.put(
+                `http://localhost:5000/api/academies/${currentAcademy?.id}/classes/${classId}/assign-students`,
+                { studentIds: selectedStudents },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+
+            // Reload class with assigned students
+            const res = await axios.get(
+                `http://localhost:5000/api/academies/${currentAcademy?.id}/classes/${classId}`,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+
+            const updatedClass = res.data;
+
+            setClasses(prev =>
+                prev.map((cls, idx) => (idx === managingClassIndex ? updatedClass : cls))
+            );
+
+        } catch (err) {
+            console.error("Failed to save student assignment", err);
+            alert("Failed to save student assignment");
+        }
+
+        setShowStudentModal(false);
+        setManagingClassIndex(null);
+        setSelectedStudents([]);
+    };
+
+
 
     useEffect(() => {
         // If no academy or user, clear data
@@ -243,79 +391,7 @@ const ClassManagementPage: React.FC = () => {
         }
     };
 
-    // -----------------------------
-    // Assign Teacher & Students
-    // -----------------------------
-    const handleAssignTeacher = (classIndex: number) => {
-        setManagingClassIndex(classIndex);
-        const teacherId = classes[classIndex]?.assignedTeacher?.id ?? null;
-        setSelectedTeacher(teacherId);
-        setShowTeacherModal(true);
-    };
 
-    const handleAssignStudents = (classIndex: number) => {
-        setManagingClassIndex(classIndex);
-        const studentIds = classes[classIndex]?.assignedStudents?.map(s => s.id) ?? [];
-        setSelectedStudents(studentIds);
-        setShowStudentModal(true);
-    };
-
-    const saveTeacherAssignment = async () => {
-        if (managingClassIndex === null) return;
-        const teacher = teachers.find(t => t.id === selectedTeacher) ?? null;
-
-        const updatedClass = { ...classes[managingClassIndex], assignedTeacher: teacher };
-        setClasses(prev => prev.map((cls, idx) => idx === managingClassIndex ? updatedClass : cls));
-
-        try {
-            const user = JSON.parse(localStorage.getItem("user") || "{}");
-            const token = user?.token;
-            const classId = classes[managingClassIndex]?.id;
-            if (!token || !classId) return;
-
-            await axios.put(
-                `http://localhost:5000/api/academies/${currentAcademy?.id}/classes`,
-                { assignedTeacherId: selectedTeacher },
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
-
-        } catch (err) {
-            console.error(err);
-            alert("Failed to save teacher assignment");
-        }
-
-        setShowTeacherModal(false);
-        setManagingClassIndex(null);
-        setSelectedTeacher(null);
-    };
-
-    const saveStudentAssignment = async () => {
-        if (managingClassIndex === null) return;
-        const assignedStudents = students.filter(s => selectedStudents.includes(s.id));
-
-        const updatedClass = { ...classes[managingClassIndex], assignedStudents, enrolledStudents: assignedStudents.length };
-        setClasses(prev => prev.map((cls, idx) => idx === managingClassIndex ? updatedClass : cls));
-
-        try {
-            const user = JSON.parse(localStorage.getItem("user") || "{}");
-            const token = user?.token;
-            const classId = classes[managingClassIndex]?.id;
-            if (!token || !classId) return;
-
-            await axios.put(
-                `http://localhost:5000/api/academies/${currentAcademy?.id}/classes`,
-                { assignedStudentIds: selectedStudents },
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
-        } catch (err) {
-            console.error(err);
-            alert("Failed to save student assignment");
-        }
-
-        setShowStudentModal(false);
-        setManagingClassIndex(null);
-        setSelectedStudents([]);
-    };
 
     // -----------------------------
     // Filtered Classes
@@ -836,16 +912,24 @@ const ClassManagementPage: React.FC = () => {
                                 {/* Assigned Students */}
                                 <div className="pt-4 border-t border-gray-200">
                                     <h3 className="mb-3 text-lg font-semibold text-gray-900">
-                                        Assigned Students ({viewingClass.assignedStudents.length})
+                                        Assigned Students ({viewingClass.assignedStudents?.length ?? 0})
                                     </h3>
-                                    {viewingClass.assignedStudents.length > 0 ? (
+
+                                    {viewingClass.assignedStudents && viewingClass.assignedStudents.length > 0 ? (
                                         <div className="space-y-2 overflow-y-auto max-h-40">
-                                            {viewingClass.assignedStudents.map((student) => (
-                                                <div key={student.id} className="flex items-center gap-3 p-3 rounded-lg bg-green-50">
+                                            {viewingClass.assignedStudents.map((student: Student, index: number) => (
+                                                <div
+                                                    key={student.id ?? index}
+                                                    className="flex items-center gap-3 p-3 rounded-lg bg-green-50"
+                                                >
                                                     <GraduationCap className="w-5 h-5 text-green-600" />
                                                     <div>
-                                                        <p className="font-medium text-gray-900">{student.name}</p>
-                                                        <p className="text-sm text-gray-600">Roll: {student.rollNumber}</p>
+                                                        <p className="font-medium text-gray-900">{student.name ?? "Unnamed Student"}</p>
+                                                        <p className="text-sm text-gray-600">
+                                                            Roll: {student.rollNumber && !isNaN(Number(student.rollNumber))
+                                                                ? student.rollNumber
+                                                                : "N/A"}
+                                                        </p>
                                                     </div>
                                                 </div>
                                             ))}
@@ -857,6 +941,7 @@ const ClassManagementPage: React.FC = () => {
                                         </div>
                                     )}
                                 </div>
+
 
                                 {/* Enrollment Progress */}
                                 <div className="pt-4 border-t border-gray-200">
@@ -966,16 +1051,14 @@ const ClassManagementPage: React.FC = () => {
                 {showStudentModal && managingClassIndex !== null && (
                     <div className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black bg-opacity-50">
                         <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                            <div className="p-6 border-b border-gray-200">
-                                <div className="flex items-center justify-between">
-                                    <h2 className="text-xl font-semibold text-gray-900">Assign Students</h2>
-                                    <button
-                                        onClick={() => setShowStudentModal(false)}
-                                        className="p-2 transition-colors rounded-lg hover:bg-gray-100"
-                                    >
-                                        <X size={20} />
-                                    </button>
-                                </div>
+                            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                                <h2 className="text-xl font-semibold text-gray-900">Assign Students</h2>
+                                <button
+                                    onClick={() => setShowStudentModal(false)}
+                                    className="p-2 rounded-lg hover:bg-gray-100"
+                                >
+                                    <X size={20} />
+                                </button>
                             </div>
 
                             <div className="p-6">
@@ -988,9 +1071,9 @@ const ClassManagementPage: React.FC = () => {
 
                                 <div className="grid grid-cols-1 gap-3 overflow-y-auto md:grid-cols-2 max-h-96">
                                     {students
-                                        .filter(student => student.grade === classes[managingClassIndex].gradeLevel)
+                                        .filter(s => s.grade === classes[managingClassIndex].gradeLevel)
                                         .map((student) => (
-                                            <label key={student.id} className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
+                                            <label key={student.id} className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
                                                 <input
                                                     type="checkbox"
                                                     checked={selectedStudents.includes(student.id)}
@@ -999,14 +1082,13 @@ const ClassManagementPage: React.FC = () => {
                                                             if (selectedStudents.length < classes[managingClassIndex].capacity) {
                                                                 setSelectedStudents(prev => [...prev, student.id]);
                                                             } else {
-                                                                alert(`Cannot assign more than ${classes[managingClassIndex].capacity} students to this class.`);
+                                                                alert(`Cannot assign more than ${classes[managingClassIndex].capacity} students.`);
                                                             }
                                                         } else {
                                                             setSelectedStudents(prev => prev.filter(id => id !== student.id));
                                                         }
                                                     }}
                                                     className="text-blue-600"
-                                                    disabled={!selectedStudents.includes(student.id) && selectedStudents.length >= classes[managingClassIndex].capacity}
                                                 />
                                                 <GraduationCap className="w-6 h-6 text-green-600" />
                                                 <div className="flex-1">
@@ -1018,7 +1100,7 @@ const ClassManagementPage: React.FC = () => {
                                         ))}
                                 </div>
 
-                                {students.filter(student => student.grade === classes[managingClassIndex].gradeLevel).length === 0 && (
+                                {students.filter(s => s.grade === classes[managingClassIndex].gradeLevel).length === 0 && (
                                     <div className="py-8 text-center">
                                         <GraduationCap className="w-12 h-12 mx-auto mb-4 text-gray-400" />
                                         <p className="text-gray-600">No students found for grade {classes[managingClassIndex].gradeLevel}</p>
@@ -1029,13 +1111,13 @@ const ClassManagementPage: React.FC = () => {
                             <div className="flex gap-3 p-6 border-t border-gray-200">
                                 <button
                                     onClick={saveStudentAssignment}
-                                    className="flex-1 px-4 py-2 font-medium text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700"
+                                    className="flex-1 px-4 py-2 font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
                                 >
                                     Assign Students ({selectedStudents.length})
                                 </button>
                                 <button
                                     onClick={() => setShowStudentModal(false)}
-                                    className="flex-1 px-4 py-2 font-medium text-gray-700 transition-colors bg-gray-100 rounded-lg hover:bg-gray-200"
+                                    className="flex-1 px-4 py-2 font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
                                 >
                                     Cancel
                                 </button>
@@ -1043,6 +1125,7 @@ const ClassManagementPage: React.FC = () => {
                         </div>
                     </div>
                 )}
+
             </div>
         </DashboardLayout>
     );

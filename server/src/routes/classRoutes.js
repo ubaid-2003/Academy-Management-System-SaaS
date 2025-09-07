@@ -51,4 +51,21 @@ router.delete(
     classController.deleteClass
 );
 
+// Assign teacher
+router.put(
+    "/academies/:academyId/classes/:classId/assign-teacher",
+    authMiddleware,
+    checkPermission(permissions.UPDATE_CLASS),
+    classController.assignTeacher
+);
+
+// Assign students
+router.put(
+    "/academies/:academyId/classes/:classId/assign-students",
+    authMiddleware,
+    checkPermission(permissions.UPDATE_CLASS),
+    classController.assignStudents
+);
+
+
 module.exports = router;

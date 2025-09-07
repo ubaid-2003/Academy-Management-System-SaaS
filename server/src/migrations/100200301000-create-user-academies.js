@@ -17,9 +17,9 @@ module.exports = {
         onUpdate: 'CASCADE',
         onDelete: 'CASCADE',
       },
-      roleId: { 
+      roleId: {
         type: Sequelize.INTEGER.UNSIGNED,
-        allowNull: false,
+        allowNull: true,   // ✅ allow null since onDelete is SET NULL
         references: { model: 'roles', key: 'id' },
         onUpdate: 'CASCADE',
         onDelete: 'SET NULL',
