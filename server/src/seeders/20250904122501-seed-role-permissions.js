@@ -26,16 +26,16 @@ module.exports = {
       }
 
       if (role.name === 'Admin') {
-        const perm = perms.find(p => p.name === permissions.CREATE_ACADEMY);
-        if (perm) {
+        perms.forEach(p => {
           rolePermissions.push({
             roleId: role.id,
-            permissionId: perm.id,
+            permissionId: p.id,
             createdAt: new Date(),
             updatedAt: new Date(),
           });
-        }
+        });
       }
+
     });
 
     if (rolePermissions.length) {

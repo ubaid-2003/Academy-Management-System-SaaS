@@ -286,25 +286,32 @@ const StudentRegistrationPage: React.FC = () => {
         setShowForm(true);
     };
 
-    const handleDelete = async (index: number) => {
+    const handleDelete = async (studentId: number) => {
         if (!window.confirm("Are you sure you want to delete this student?")) return;
 
-        const token = localStorage.getItem("token");
-        const studentId = students[index]?.id;
-        if (!studentId) return;
-
         try {
+            const user = JSON.parse(localStorage.getItem("user") || "{}");
+            const token = user?.token;
+            if (!token) throw new Error("Not authorized");
+
             const res = await fetch(`http://localhost:5000/api/students/${studentId}`, {
                 method: "DELETE",
                 headers: { Authorization: `Bearer ${token}` },
             });
-            if (!res.ok) throw new Error("Failed to delete student");
 
-            await fetchStudents();
-        } catch (err) {
-            console.error("Delete error:", err);
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.message || "Failed to delete student");
+            }
+
+            setStudents(prev => prev.filter(s => s.id !== studentId));
+        } catch (err: any) {
+            console.error("Error deleting student:", err);
+            alert(err.message || "Failed to delete student");
         }
     };
+
+
 
     const clearFilters = () => {
         setSearchTerm("");
@@ -1092,11 +1099,18 @@ const StudentRegistrationPage: React.FC = () => {
                                                         <Edit className="w-5 h-5" />
                                                     </button>
                                                     <button
-                                                        onClick={() => handleDelete(index)}
+                                                        onClick={() => {
+                                                            if (student.id !== undefined) {
+                                                                handleDelete(student.id);
+                                                            } else {
+                                                                console.error("Student ID is undefined");
+                                                            }
+                                                        }}
                                                         className="p-1 text-red-600 transition-colors rounded-full hover:text-red-800 hover:bg-red-50"
                                                     >
                                                         <Trash2 className="w-5 h-5" />
                                                     </button>
+
                                                 </div>
                                             </td>
                                         </tr>

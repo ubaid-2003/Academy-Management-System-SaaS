@@ -60,30 +60,31 @@ const createTeacher = async (req, res) => {
 
 // ==================== DELETE TEACHER ====================
 const deleteTeacher = async (req, res) => {
-  const t = await sequelize.transaction();
+  const { id } = req.params;
+
   try {
-    const { id } = req.params;
+    // Find the teacher
     const teacher = await Teacher.findByPk(id);
-    if (!teacher) return res.status(404).json({ message: "Teacher not found" });
+    if (!teacher) return res.status(404).json({ message: 'Teacher not found' });
 
-    const academyId = teacher.academyId;
+    // Find the related academy
+    const academy = await Academy.findByPk(teacher.academyId);
+    if (!academy) return res.status(404).json({ message: 'Academy not found' });
 
-    await TeacherStudents.destroy({ where: { teacherId: id }, transaction: t });
-    await teacher.destroy({ transaction: t });
+    // Delete the teacher
+    await teacher.destroy();
 
-    // ✅ Decrement totalTeachers
-    await Academy.decrement("totalTeachers", { by: 1, where: { id: academyId }, transaction: t });
+    // Decrement totalTeachers safely
+    if (academy.totalTeachers > 0) {
+      await academy.decrement('totalTeachers');
+    }
 
-    await t.commit();
-    res.json({ message: "Teacher deleted successfully" });
-  } catch (err) {
-    await t.rollback();
-    console.error("DeleteTeacher error:", err);
-    res.status(500).json({ message: "Server error deleting teacher", error: err.message });
+    res.status(200).json({ message: 'Teacher deleted successfully' });
+  } catch (error) {
+    console.error('DeleteTeacher error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
-
-
 
 // ==================== GET TEACHERS BY ACADEMY ====================
 const getTeachersByAcademy = async (req, res) => {

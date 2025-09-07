@@ -1,39 +1,31 @@
 "use client";
 
-import { useUserAcademies } from "../hooks/useUserAcademies";
-import { switchAcademy } from "../hooks/useSwitchAcademy";
-import { useState } from "react";
+import { useAcademy } from "@/app/context/AcademyContext";
 
 const AcademySwitcher = () => {
-  const { academies, loading, error } = useUserAcademies();
-  const [activeId, setActiveId] = useState<number | null>(null);
+  const { academies, currentAcademy, handleAcademySwitch } = useAcademy();
 
-  const handleSwitch = async (id: number) => {
-    try {
-      await switchAcademy(id);
-      setActiveId(id);
-      alert("Switched academy successfully!");
-    } catch (err: any) {
-      alert(err.message);
-    }
-  };
-
-  if (loading) return <p>Loading academies...</p>;
-  if (error) return <p>{error}</p>;
+  if (!academies.length) return <p>No academies found.</p>;
 
   return (
     <div>
       <h2>Select Active Academy</h2>
       <ul>
-        {academies.map((a) => (
-          <li key={a.id}>
+        {academies.map((academy) => (
+          <li key={academy.id} style={{ marginBottom: "8px" }}>
             <button
-              onClick={() => handleSwitch(a.id)}
+              onClick={() => handleAcademySwitch(academy)}
               style={{
-                fontWeight: activeId === a.id ? "bold" : "normal",
+                fontWeight: currentAcademy?.id === academy.id ? "bold" : "normal",
+                backgroundColor:
+                  currentAcademy?.id === academy.id ? "#d1fae5" : "#f3f4f6",
+                padding: "6px 12px",
+                borderRadius: "6px",
+                border: "1px solid #ccc",
+                cursor: "pointer",
               }}
             >
-              {a.name} ({a.role})
+              {academy.name} {academy.status ? `(${academy.status})` : ""}
             </button>
           </li>
         ))}

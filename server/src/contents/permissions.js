@@ -17,4 +17,10 @@ module.exports = {
   UPDATE_TEACHER: "update_teacher",
   DELETE_TEACHER: "delete_teacher",
   VIEW_TEACHER: "view_teacher",
+
+  // ==================== Class Permissions ====================
+  CREATE_CLASS: "create_class",
+  UPDATE_CLASS: "update_class",
+  DELETE_CLASS: "delete_class",
+  VIEW_CLASS: "view_class",
 };

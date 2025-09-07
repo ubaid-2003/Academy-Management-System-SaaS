@@ -1,11 +1,6 @@
 'use client';
-import {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  ReactNode,
-} from 'react';
+
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 export interface User {
   id: number;
@@ -30,24 +25,13 @@ interface AuthContextType {
   fetchWithAuth: (url: string, options?: RequestInit) => Promise<Response>;
 }
 
-const AuthContext = createContext<AuthContextType>({
-  user: null,
-  setUser: () => {},
-  logout: () => {},
-  updateActiveAcademy: async () => {},
-  canCreateAcademy: false,
-  activeAcademyId: undefined,
-  academyIds: [],
-  fetchWithAuth: async () => new Response(),
-});
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
-  const API_BASE_URL =
-    process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-
-  // ✅ Load user from localStorage on mount
+  // Load user from localStorage on mount
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
@@ -55,7 +39,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const parsedUser: User = JSON.parse(storedUser);
         if (parsedUser.token) {
           setUser(parsedUser);
-          // auto-switch to first academy if no activeAcademyId
           if (!parsedUser.activeAcademyId) {
             updateActiveAcademy();
           }
@@ -68,7 +51,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  // ✅ Sync user → localStorage
+  // Sync user → localStorage
   useEffect(() => {
     if (user && user.token) {
       localStorage.setItem('user', JSON.stringify(user));
@@ -82,9 +65,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem('token');
   };
 
-  // ✅ Switch active academy
+  // Switch active academy
   const updateActiveAcademy = async (academyId?: number) => {
-    if (!user?.token) return;
+    if (!user?.token) {
+      console.warn('No user token, cannot switch academy.');
+      return;
+    }
 
     try {
       const url = academyId
@@ -118,14 +104,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem('user', JSON.stringify(updatedUser));
       localStorage.setItem('token', updatedUser.token);
 
-      return data; // return data for updating stats etc.
+      return data;
     } catch (err) {
       console.error('Error switching academy:', err);
       alert('Failed to switch academy. Please try again.');
     }
   };
 
-  // ✅ Fetch with Auth wrapper
+  // Fetch wrapper with auth
   const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
     if (!user?.token) throw new Error('No token found');
 
@@ -139,11 +125,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     const res = await fetch(url, { ...options, headers });
-    if (res.status === 401) logout();
+
+    if (res.status === 401) {
+      logout();
+      throw new Error('Invalid token. Logged out.');
+    }
+
     return res;
   };
 
-  // ✅ Admin check (case insensitive)
+  // Admin check (case insensitive)
   const canCreateAcademy = user?.role?.toLowerCase() === 'admin';
 
   return (
@@ -164,4 +155,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) throw new Error('useAuth must be used inside AuthProvider');
+  return context;
+};

@@ -4,6 +4,7 @@ const { Model } = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
   class Student extends Model {
     static associate(models) {
+      // Belongs to one Academy
       Student.belongsTo(models.Academy, {
         foreignKey: 'academyId',
         as: 'academy',
@@ -11,6 +12,7 @@ module.exports = (sequelize, DataTypes) => {
         onUpdate: 'CASCADE',
       });
 
+      // Many-to-many: Student <-> Teacher (through teacher_students)
       Student.belongsToMany(models.Teacher, {
         through: models.TeacherStudents,
         foreignKey: 'studentId',
@@ -21,6 +23,27 @@ module.exports = (sequelize, DataTypes) => {
       Student.hasMany(models.TeacherStudents, {
         foreignKey: 'studentId',
         as: 'teacherLinks',
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE',
+      });
+
+      // ✅ NEW: Many-to-many: Student <-> Class (through class_students)
+      Student.belongsToMany(models.Class, {
+        through: models.ClassStudents,
+        foreignKey: 'studentId',
+        otherKey: 'classId',
+        as: 'classes',
+      });
+
+      Student.belongsTo(models.Class, {
+        foreignKey: 'classId',
+        as: 'class',
+      });
+
+      // Direct access to junction table if needed
+      Student.hasMany(models.ClassStudents, {
+        foreignKey: 'studentId',
+        as: 'classLinks',
         onDelete: 'CASCADE',
         onUpdate: 'CASCADE',
       });
@@ -35,7 +58,7 @@ module.exports = (sequelize, DataTypes) => {
       email: { type: DataTypes.STRING, allowNull: false, validate: { isEmail: true } },
       phone: { type: DataTypes.STRING, allowNull: false },
       dateOfBirth: { type: DataTypes.DATEONLY },
-      gender: { type: DataTypes.ENUM('male','female','other') },
+      gender: { type: DataTypes.ENUM('male', 'female', 'other') },
       rollNumber: { type: DataTypes.STRING, allowNull: false },
       grade: { type: DataTypes.STRING },
       section: { type: DataTypes.STRING },
@@ -47,7 +70,7 @@ module.exports = (sequelize, DataTypes) => {
       guardianName: { type: DataTypes.STRING, allowNull: false },
       guardianPhone: { type: DataTypes.STRING, allowNull: false },
       guardianRelation: { type: DataTypes.STRING },
-      status: { type: DataTypes.ENUM('active','inactive','suspended'), defaultValue: 'active' },
+      status: { type: DataTypes.ENUM('active', 'inactive', 'suspended'), defaultValue: 'active' },
       academyId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
     },
     {

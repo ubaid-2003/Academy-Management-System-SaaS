@@ -10,7 +10,7 @@ type LoginForm = { email: string; password: string };
 
 export default function LoginPage() {
   const router = useRouter();
-  const { setUser } = useAuth();
+  const { setUser, updateActiveAcademy } = useAuth();
 
   const [form, setForm] = useState<LoginForm>({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
@@ -22,56 +22,61 @@ export default function LoginPage() {
     setForm(prev => ({ ...prev, [e.target.id]: e.target.value }));
   };
 
-const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-  e.preventDefault();
-  setMessage('');
-  setLoading(true);
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setMessage('');
+    setLoading(true);
 
-  try {
-    const res = await fetch('http://localhost:5000/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    });
+    try {
+      const res = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
 
-    const data = await res.json();
+      const data = await res.json();
 
-    if (!res.ok || !data.user) {
-      setMessage(data.message || 'Invalid credentials');
-      return;
+      if (!res.ok || !data.user) {
+        setMessage(data.message || 'Invalid credentials');
+        return;
+      }
+
+      // ✅ Clear old user/token
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+      localStorage.removeItem('permissions');
+
+      const loggedUser = {
+        id: data.user.id,
+        fullName: data.user.fullName,
+        email: data.user.email,
+        role: data.user.role,
+        avatar: data.user.avatar || '',
+        token: data.token,
+        activeAcademyId: data.user.activeAcademyId,
+        academyIds: data.user.academyIds || [],
+        permissions: data.permissions || [],
+      };
+
+      // ✅ Set user in context and localStorage
+      setUser(loggedUser);
+      localStorage.setItem('user', JSON.stringify(loggedUser));
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('permissions', JSON.stringify(data.permissions || []));
+
+      // ✅ Automatically set first academy if not set
+      if (!loggedUser.activeAcademyId && loggedUser.academyIds?.length > 0) {
+        await updateActiveAcademy(loggedUser.academyIds[0]);
+      }
+
+      router.push('/pages/dashboard');
+    } catch (err) {
+      console.error(err);
+      setMessage('Server error, please try again.');
+    } finally {
+      setLoading(false);
     }
-
-    // ❌ Optional: check by permission instead of role
-    if (!data.permissions.includes("create_academy")) {
-      setMessage('Access denied: You don’t have permission to create academies.');
-      return;
-    }
-
-    const loggedUser = {
-      id: data.user.id,
-      fullName: data.user.fullName,
-      email: data.user.email,
-      role: data.user.role,
-      avatar: data.user.avatar || '',
-      token: data.token,
-      activeAcademyId: data.user.activeAcademyId,
-      academyIds: data.user.academyIds,
-      permissions: data.permissions,
-    };
-
-    setUser(loggedUser);
-    localStorage.setItem("user", JSON.stringify(loggedUser));
-    localStorage.setItem("token", data.token);
-    localStorage.setItem("permissions", JSON.stringify(data.permissions));
-
-    router.push('/pages/dashboard');
-  } catch (err) {
-    console.error(err);
-    setMessage('Server error, please try again.');
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-blue-50 to-white">

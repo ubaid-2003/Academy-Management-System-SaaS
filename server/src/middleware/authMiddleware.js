@@ -10,18 +10,21 @@ const authMiddleware = async (req, res, next) => {
     }
 
     const token = authHeader.split(" ")[1];
+
     let decoded;
     try {
       decoded = jwt.verify(token, process.env.JWT_SECRET);
     } catch (err) {
       return res.status(401).json({
-        message: err.name === "TokenExpiredError"
-          ? "Token expired. Please login again."
-          : "Invalid token",
+        message:
+          err.name === "TokenExpiredError"
+            ? "Token expired. Please login again."
+            : "Invalid token",
         error: err.message,
       });
     }
 
+    // Load user with role + permissions
     const user = await User.findByPk(decoded.id, {
       attributes: { exclude: ["password"] },
       include: [
@@ -32,29 +35,38 @@ const authMiddleware = async (req, res, next) => {
             {
               model: Permission,
               as: "permissions",
-              through: { attributes: [] },
+              through: { attributes: [] }, // hide junction table
             },
           ],
         },
       ],
     });
 
-    if (!user) return res.status(401).json({ message: "Unauthorized: User not found" });
+    if (!user) {
+      return res.status(401).json({ message: "Unauthorized: User not found" });
+    }
 
-    req.user = user;
+    req.user = user; // save user with role + permissions in req
     next();
   } catch (err) {
     console.error("🔥 AuthMiddleware Error:", err);
-    res.status(500).json({ message: "Server error in authentication", error: err.message });
+    res.status(500).json({
+      message: "Server error in authentication",
+      error: err.message,
+    });
   }
 };
 
 const adminAuth = (req, res, next) => {
-  if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+  if (!req.user) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
   const roleName = req.user.role?.name?.toLowerCase();
   if (!["admin", "superadmin"].includes(roleName)) {
     return res.status(403).json({ message: "Access denied: Admins only" });
   }
+
   next();
 };
 

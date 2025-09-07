@@ -85,26 +85,29 @@ const createStudent = async (req, res) => {
 
 // ==================== DELETE STUDENT ====================
 const deleteStudent = async (req, res) => {
-  const t = await sequelize.transaction();
+  const { id } = req.params;
+
   try {
-    const { id } = req.params;
+    // Find the student
     const student = await Student.findByPk(id);
-    if (!student) return res.status(404).json({ message: "Student not found" });
+    if (!student) return res.status(404).json({ message: 'Student not found' });
 
-    const academyId = student.academyId;
+    // Find the related academy
+    const academy = await Academy.findByPk(student.academyId);
+    if (!academy) return res.status(404).json({ message: 'Academy not found' });
 
-    await TeacherStudents.destroy({ where: { studentId: id }, transaction: t });
-    await student.destroy({ transaction: t });
+    // Delete the student
+    await student.destroy();
 
-    // ✅ Decrement totalStudents
-    await Academy.decrement("totalStudents", { by: 1, where: { id: academyId }, transaction: t });
+    // Decrement totalStudents safely
+    if (academy.totalStudents > 0) {
+      await academy.decrement('totalStudents');
+    }
 
-    await t.commit();
-    res.json({ message: "Student deleted successfully" });
-  } catch (err) {
-    await t.rollback();
-    console.error("DeleteStudent error:", err);
-    res.status(500).json({ message: "Server error deleting student", error: err.message });
+    res.status(200).json({ message: 'Student deleted successfully' });
+  } catch (error) {
+    console.error('DeleteStudent error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 

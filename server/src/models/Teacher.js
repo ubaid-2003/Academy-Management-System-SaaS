@@ -4,6 +4,7 @@ const { Model } = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
   class Teacher extends Model {
     static associate(models) {
+      // Belongs to one Academy
       Teacher.belongsTo(models.Academy, {
         foreignKey: 'academyId',
         as: 'academy',
@@ -11,6 +12,7 @@ module.exports = (sequelize, DataTypes) => {
         onUpdate: 'CASCADE',
       });
 
+      // Many-to-many: Teacher <-> Student (through teacher_students)
       Teacher.belongsToMany(models.Student, {
         through: models.TeacherStudents,
         foreignKey: 'teacherId',
@@ -24,6 +26,22 @@ module.exports = (sequelize, DataTypes) => {
         onDelete: 'CASCADE',
         onUpdate: 'CASCADE',
       });
+
+      // ✅ NEW: Many-to-many: Teacher <-> Class (through class_teachers)
+      Teacher.belongsToMany(models.Class, {
+        through: models.ClassTeachers,
+        foreignKey: 'teacherId',
+        otherKey: 'classId',
+        as: 'classes',
+      });
+
+      // Direct access to junction table if needed
+      Teacher.hasMany(models.ClassTeachers, {
+        foreignKey: 'teacherId',
+        as: 'classLinks',
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE',
+      });
     }
   }
 
@@ -34,7 +52,7 @@ module.exports = (sequelize, DataTypes) => {
       lastName: { type: DataTypes.STRING, allowNull: false },
       email: { type: DataTypes.STRING, allowNull: false, validate: { isEmail: true } },
       phone: { type: DataTypes.STRING },
-      gender: { type: DataTypes.ENUM('male','female','other') },
+      gender: { type: DataTypes.ENUM('male', 'female', 'other') },
       dateOfBirth: { type: DataTypes.DATEONLY },
       employeeId: { type: DataTypes.STRING, allowNull: false },
       qualification: { type: DataTypes.STRING },
@@ -43,7 +61,7 @@ module.exports = (sequelize, DataTypes) => {
       city: { type: DataTypes.STRING },
       province: { type: DataTypes.STRING },
       country: { type: DataTypes.STRING, defaultValue: 'Pakistan' },
-      status: { type: DataTypes.ENUM('active','inactive','suspended'), defaultValue: 'active' },
+      status: { type: DataTypes.ENUM('active', 'inactive', 'suspended'), defaultValue: 'active' },
       subjects: { type: DataTypes.JSON },
       academyId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
     },

@@ -27,6 +27,7 @@ import {
 
 import DashboardLayout from "@/app/components/DashboardLayout";
 import { useRouter } from "next/navigation";
+import { useAcademy } from '../../../context/AcademyContext'; // adjust path
 
 // ================= TYPES =================
 interface Teacher {
@@ -62,6 +63,7 @@ const TeacherManagementPage: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [viewingTeacher, setViewingTeacher] = useState<Teacher | null>(null);
 
+  const { currentAcademy } = useAcademy();
 
   // Notification
   const [notification, setNotification] = useState<{
@@ -112,17 +114,18 @@ const TeacherManagementPage: React.FC = () => {
     }
   };
 
-  // ================= CREATE TEACHER =================
-  const createTeacher = async (academyId: number, teacherData: Teacher) => {
+  // Create or POST a new teacher
+  const createTeacher = async (teacherData: Teacher & { academyId?: number }) => {
     try {
+      // Get logged-in user
       const user = JSON.parse(localStorage.getItem("user") || "{}");
-      if (!user?.token || !academyId) throw new Error("Not authorized");
+      const academyId = teacherData.academyId || user?.activeAcademyId;
 
-      // ✅ Ensure academyId is included in the payload
-      const payload = {
-        ...teacherData,
-        academyId,
-      };
+      if (!user?.token) throw new Error("Not authorized");
+      if (!academyId) throw new Error("No active academy selected");
+
+      // Merge academyId into payload
+      const payload = { ...teacherData, academyId };
 
       const res = await fetch(
         `http://localhost:5000/api/academies/${academyId}/teachers`,
@@ -142,12 +145,11 @@ const TeacherManagementPage: React.FC = () => {
       }
 
       return await res.json();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Create Teacher Error:", err);
       throw err;
     }
   };
-
 
 
   // Update teacher
@@ -180,9 +182,13 @@ const TeacherManagementPage: React.FC = () => {
   // Delete teacher
   const deleteTeacher = async (id: number) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/teachers/${id}`, {
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      const academyId = user.activeAcademyId;
+      if (!academyId) throw new Error("No active academy selected");
+
+      const res = await fetch(`http://localhost:5000/api/teachers/${id}?academyId=${academyId}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        headers: { Authorization: `Bearer ${user.token}` },
       });
 
       if (!res.ok) {
@@ -196,6 +202,7 @@ const TeacherManagementPage: React.FC = () => {
       throw err;
     }
   };
+
 
   // ================= FORM HANDLERS =================
 
@@ -232,25 +239,41 @@ const TeacherManagementPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
-      const user = JSON.parse(localStorage.getItem("user") || "{}");
-      const academyId = user?.activeAcademyId; // make sure your AuthContext sets this
+      // Use AuthContext / AcademyContext for active academy
+      const academyId = currentAcademy?.id; // make sure currentAcademy comes from useAcademy()
 
-      if (!academyId) throw new Error("No active academy selected");
+      if (!academyId) {
+        alert("Please create or select an academy first");
+        return;
+      }
+
+      // Merge academyId into teacher payload
+      const teacherPayload = {
+        ...formData,
+        academyId,
+      };
 
       if (editingTeacher) {
-        // UPDATE
-        const updated = await updateTeacher(editingTeacher.id!, formData);
-        setTeachers((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+        // UPDATE teacher
+        const updated = await updateTeacher(editingTeacher.id!, teacherPayload);
+        setTeachers((prev) =>
+          prev.map((t) => (t.id === updated.id ? updated : t))
+        );
+        alert("Teacher updated successfully");
       } else {
-        // CREATE
-        const created = await createTeacher(academyId, formData);
+        // CREATE teacher
+        const created = await createTeacher(teacherPayload);
         setTeachers((prev) => [...prev, created]);
+        alert("Teacher created successfully");
       }
-      resetForm();
-    } catch (err) {
+
+      resetForm(); // reset form fields
+    } catch (err: any) {
       console.error("Error saving teacher:", err);
+      alert("Error saving teacher: " + (err.message || "Unknown error"));
     }
   };
+
 
 
   // ✅ Edit handler fixed
@@ -262,13 +285,16 @@ const TeacherManagementPage: React.FC = () => {
 
   const handleDelete = async (id: number) => {
     if (!window.confirm("Are you sure you want to delete this teacher?")) return;
+
     try {
-      await deleteTeacher(id);
+      await deleteTeacher(id); // sends token automatically
       setTeachers((prev) => prev.filter((t) => t.id !== id));
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error deleting teacher:", err);
+      alert(err.message);
     }
   };
+
 
   // ================= EFFECT =================
 
@@ -285,7 +311,7 @@ const TeacherManagementPage: React.FC = () => {
   };
 
   const subjects = ["All", ...Array.from(new Set(teachers.map((t) => t.subjects)))];
-  const statuses = ["All", "Active", "Inactive", "On Leave"];
+  const statuses = ["All", "Active", "Inactive", "suspended"];
 
   const filteredTeachers = teachers.filter((teacher) => {
     const matchesSearch = [teacher.firstName, teacher.lastName, teacher.email, teacher.employeeId]
@@ -301,7 +327,7 @@ const TeacherManagementPage: React.FC = () => {
   const StatusBadge = ({ status }: { status: string }) => {
     let bgColor = "bg-gray-100 text-gray-800";
     if (status === "Active") bgColor = "bg-green-100 text-green-800 border border-green-200";
-    else if (status === "On Leave") bgColor = "bg-yellow-100 text-yellow-800 border border-yellow-200";
+    else if (status === "suspended") bgColor = "bg-yellow-100 text-yellow-800 border border-yellow-200";
     else if (status === "Inactive") bgColor = "bg-red-100 text-red-800 border border-red-200";
 
     return (
@@ -399,9 +425,7 @@ const TeacherManagementPage: React.FC = () => {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Subject:</span>
-                    <span className="font-medium text-purple-600">
-                      {Array.isArray(teacher.subjects) ? teacher.subjects.join(", ") : teacher.subjects}
-                    </span>
+                    <span className="font-medium text-purple-600">{teacher.subjects}</span>
                   </div>
                   <div className="flex justify-between">
 
@@ -430,6 +454,7 @@ const TeacherManagementPage: React.FC = () => {
                   </div>
                 </div>
               </div>
+
             </div>
           </div>
 
@@ -638,20 +663,17 @@ const TeacherManagementPage: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block mb-2 font-medium text-gray-700">Subjects</label>
+                  <label className="block mb-2 font-medium text-gray-700">Subject *</label>
                   <input
                     type="text"
-                    name="subjects"
-                    value={Array.isArray(formData.subjects) ? formData.subjects.join(", ") : formData.subjects || ""}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        subjects: e.target.value.split(",").map((s) => s.trim()),
-                      })
-                    }
-                    placeholder="e.g., Mathematics, Physics"
+                    name="subjects"          // ← must match 'subjects' in state
+                    value={formData.subjects} // controlled input
+                    onChange={handleInputChange}
+                    required
+                    placeholder="e.g., Mathematics"
                     className="w-full px-4 py-2 transition border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
+
                 </div>
 
 
@@ -677,7 +699,7 @@ const TeacherManagementPage: React.FC = () => {
                   >
                     <option value="Active">Active</option>
                     <option value="Inactive">Inactive</option>
-                    <option value="On Leave">On Leave</option>
+                    <option value="Suspended">Suspended</option>
                   </select>
                 </div>
               </div>
@@ -785,6 +807,12 @@ const TeacherManagementPage: React.FC = () => {
                 <div className="p-3 rounded-lg bg-gradient-to-r from-yellow-500 to-yellow-600">
                   <Calendar className="w-8 h-8 text-white" />
                 </div>
+                <div className="ml-4">
+                  <h3 className="text-3xl font-bold text-gray-800">
+                    {teachers.filter(t => t.status === "suspended").length}
+                  </h3>
+                  <p className="text-sm font-medium text-gray-600">On Leave</p>
+                </div>
               </div>
             </div>
 
@@ -795,11 +823,7 @@ const TeacherManagementPage: React.FC = () => {
                 </div>
                 <div className="ml-4">
                   <h3 className="text-3xl font-bold text-gray-800">
-                    {Array.from(
-                      new Set(
-                        teachers.flatMap(t => Array.isArray(t.subjects) ? t.subjects : [t.subjects])
-                      )
-                    ).length}
+                    {Array.from(new Set(teachers.map(t => t.subjects))).length}
                   </h3>
                   <p className="text-sm font-medium text-gray-600">Subjects Taught</p>
                 </div>
@@ -859,7 +883,22 @@ const TeacherManagementPage: React.FC = () => {
                   </select>
                 </div>
 
+                <div>
+                  <label className="block mb-2 font-medium text-gray-700">Filter by Subject</label>
+                  <select
+                    value={filterSubject}
+                    onChange={(e) => setFilterSubject(e.target.value)}
+                    className="w-full px-4 py-2 transition border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="All">All Subjects</option>
+                    {subjects.map((subject, index) => (
+                      <option key={index} value={subject}>
+                        {subject}
+                      </option>
+                    ))}
+                  </select>
 
+                </div>
 
                 <div className="flex items-end">
                   <div className="text-sm text-gray-600">
