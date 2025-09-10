@@ -14,7 +14,15 @@ module.exports = {
         type: Sequelize.STRING(128),
         allowNull: false,
       },
-
+      classId: {
+        type: Sequelize.BIGINT, // match classes.id type
+        references: {
+          model: "classes",
+          key: "id",
+        },
+        onUpdate: "CASCADE",
+        onDelete: "SET NULL",
+      },
       // Section/group, e.g. A, B
       section: {
         type: Sequelize.STRING(32),

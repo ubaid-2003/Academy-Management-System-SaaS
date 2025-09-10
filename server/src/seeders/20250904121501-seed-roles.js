@@ -10,8 +10,6 @@ module.exports = {
     ], {
       updateOnDuplicate: ['name', 'updatedAt']
     });
-
-
   },
 
   async down(queryInterface, Sequelize) {

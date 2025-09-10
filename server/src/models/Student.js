@@ -13,6 +13,15 @@ module.exports = (sequelize, DataTypes) => {
         onUpdate: 'CASCADE',
       });
 
+      Student.associate = (models) => {
+        Student.belongsToMany(models.Exam, {
+          through: models.StudentExam,
+          foreignKey: "studentId",
+          otherKey: "examId",
+          as: "exams",
+        });
+      };
+
       // Many-to-many with Teacher
       Student.belongsToMany(models.Teacher, {
         through: models.TeacherStudents,
@@ -28,6 +37,15 @@ module.exports = (sequelize, DataTypes) => {
         otherKey: 'classId',
         as: 'classes',
       });
+
+      // Student enrolled in many courses
+      Student.belongsToMany(models.Course, {
+        through: models.CourseStudent,
+        foreignKey: 'studentId',
+        otherKey: 'courseId',
+        as: 'courses'
+      });
+
     }
   }
 

@@ -1,4 +1,8 @@
 const checkPermission = (permissionName) => {
+  if (!permissionName || typeof permissionName !== "string") {
+    throw new Error("checkPermission requires a valid permissionName string");
+  }
+
   return (req, res, next) => {
     try {
       const user = req.user;
@@ -7,15 +11,18 @@ const checkPermission = (permissionName) => {
       }
 
       const role = user.role;
-      if (!role || !role.permissions) {
-        return res.status(403).json({ message: "Forbidden: No role or permissions found" });
+      if (!role) {
+        return res.status(403).json({ message: "Forbidden: No role found" });
       }
 
-      // Normalize permission names for case-insensitive comparison
-      const permissionNames = role.permissions.map((p) => p.name.toLowerCase());
-      const hasPermission = permissionNames.includes(permissionName.toLowerCase());
+      const permissionsArray = Array.isArray(role.permissions) ? role.permissions : [];
 
-      if (!hasPermission) {
+      const permissionNames = permissionsArray
+        .map(p => p?.name)
+        .filter(name => typeof name === "string")
+        .map(name => name.toLowerCase());
+
+      if (!permissionNames.includes(permissionName.toLowerCase())) {
         return res.status(403).json({
           message: `Forbidden: Missing required permission '${permissionName}'`,
         });

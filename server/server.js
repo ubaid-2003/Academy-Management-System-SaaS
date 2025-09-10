@@ -1,14 +1,18 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const { sequelize } = require("./src/models");
+const { sequelize } = require("./src/models"); // only sequelize needed
 
+// =====================
 // Import routes
+// =====================
 const authRoutes = require("./src/routes/auth");
 const academyRoutes = require("./src/routes/academyRoutes");
 const studentRoutes = require("./src/routes/studentRoutes");
 const teacherRoutes = require("./src/routes/teacherRoutes");
 const classRoutes = require("./src/routes/classRoutes");
+const courseRoutes = require("./src/routes/courseRoutes");
+const examRoutes = require("./src/routes/examRoutes");
 
 const app = express();
 
@@ -37,6 +41,8 @@ app.use("/api/academies", academyRoutes);
 app.use("/api", studentRoutes);
 app.use("/api", teacherRoutes);
 app.use("/api", classRoutes);
+app.use("/api", courseRoutes);
+app.use("/api", examRoutes);
 
 // =====================
 // Global error handler
@@ -58,7 +64,7 @@ const startServer = async () => {
   try {
     console.log(
       process.env.NODE_ENV !== "production"
-        ? "⚙️  Development mode: syncing database using migrations..."
+        ? "⚙️  Development mode: syncing database..."
         : "🔒 Production mode: connecting to database..."
     );
 

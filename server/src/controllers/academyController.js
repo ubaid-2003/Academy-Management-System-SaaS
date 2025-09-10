@@ -1,4 +1,4 @@
-const { Academy, User, UserAcademy, UserPermission, sequelize, Role } = require("../models");
+const { Academy, User, UserAcademy, UserPermission, sequelize, Role, Student, Teacher } = require("../models");
 const jwt = require("jsonwebtoken"); // add this line
 
 // ==================== CREATE ACADEMY ====================
@@ -14,16 +14,18 @@ const createAcademy = async (req, res) => {
     const {
       name,
       registrationNumber,
-      address = null,
-      city = null,
-      province = null,
+      address,
+      city,
+      province,
       country = "Pakistan",
-      email = null,
-      phone = null,
+      email,
+      phone,
       principalName,
       status,
-      facilities = null,
-      notes = null,
+      facilities,
+      notes,
+      teacherIds = [], // ✅ teacher IDs coming from frontend
+      studentIds = [], // ✅ student IDs coming from frontend
     } = req.body;
 
     if (!name || !registrationNumber || !status || !principalName)
@@ -31,7 +33,9 @@ const createAcademy = async (req, res) => {
 
     const validStatuses = ["Active", "Inactive", "Pending"];
     if (!validStatuses.includes(status))
-      return res.status(400).json({ message: `Invalid status. Must be one of ${validStatuses.join(", ")}` });
+      return res
+        .status(400)
+        .json({ message: `Invalid status. Must be one of ${validStatuses.join(", ")}` });
 
     const [academy, created] = await Academy.findOrCreate({
       where: { registrationNumber: registrationNumber.trim() },
@@ -44,30 +48,64 @@ const createAcademy = async (req, res) => {
         email,
         phone,
         principalName: principalName.trim(),
-        totalStudents: 0,        // ✅ force always 0 on create
-        totalTeachers: 0,        // ✅ force always 0 on create
+        totalStudents: 0,
+        totalTeachers: 0,
         status,
         facilities,
-        notes
+        notes,
       },
       transaction: t,
     });
 
     if (!created) {
       await t.rollback();
-      return res.status(400).json({ message: "Academy with this registration number already exists" });
+      return res
+        .status(400)
+        .json({ message: "Academy with this registration number already exists" });
     }
 
     // Link academy to user
     const roleId = user.role?.id;
     await user.addAcademy(academy, { through: { roleId }, transaction: t });
 
+    // ✅ Link selected teachers & students
+    if (teacherIds.length) {
+      await Teacher.update(
+        { academyId: academy.id },
+        { where: { id: teacherIds }, transaction: t }
+      );
+    }
+
+    if (studentIds.length) {
+      await Student.update(
+        { academyId: academy.id },
+        { where: { id: studentIds }, transaction: t }
+      );
+    }
+
     await t.commit();
-    return res.status(201).json({ message: "Academy created successfully", academy });
+
+    // ✅ Fetch academy with teacher & student (only id + name for dropdown)
+    const academyWithDropdownData = await Academy.findByPk(academy.id, {
+      include: [
+        { model: Teacher, as: "teachers", attributes: ["id", "name"] },
+        { model: Student, as: "students", attributes: ["id", "name"] },
+      ],
+    });
+
+    return res.status(201).json({
+  message: "Academy created successfully",
+  academy: academyWithDropdownData,
+  teachers: academyWithDropdownData.teachers || [],
+  students: academyWithDropdownData.students || []
+});
   } catch (err) {
     await t.rollback();
     console.error("CreateAcademy error:", err);
-    return res.status(500).json({ message: "Server error creating academy", error: err.message });
+    return res.status(500).json({
+      message: "Server error creating academy",
+      error: err.message,
+    });
   }
 };
 
@@ -181,13 +219,24 @@ const getUserAcademies = async (req, res) => {
 const getAcademyById = async (req, res) => {
   try {
     const { id } = req.params;
+
     const academy = await Academy.findByPk(id, {
       include: [
         {
           model: User,
           as: "users",
           attributes: ["id", "fullName", "email", "roleId"],
-          through: { attributes: [] },
+          through: { attributes: [] }, // from UserAcademy
+        },
+        {
+          model: Student,
+          as: "students",
+          attributes: ["id", "firstName", "email"], // only fields you need for dropdown
+        },
+        {
+          model: Teacher,
+          as: "teachers",
+          attributes: ["id", "lastName", "email"], // only fields you need for dropdown
         },
       ],
     });
@@ -197,12 +246,21 @@ const getAcademyById = async (req, res) => {
     // Get stats
     const stats = await getAcademyStats(id);
 
-    res.json({ ...academy.toJSON(), stats });   // ✅ stats included here
+    // Return academy with students & teachers separately for dropdown usage
+    res.json({
+      ...academy.toJSON(),
+      stats,
+      students: academy.students || [],
+      teachers: academy.teachers || [],
+    });
   } catch (err) {
     console.error("GetAcademyById error:", err);
-    res.status(500).json({ message: "Server error fetching academy", error: err.message });
+    res
+      .status(500)
+      .json({ message: "Server error fetching academy", error: err.message });
   }
 };
+
 // ==================== DELETE ACADEMY ====================
 const deleteAcademy = async (req, res) => {
   const t = await sequelize.transaction();

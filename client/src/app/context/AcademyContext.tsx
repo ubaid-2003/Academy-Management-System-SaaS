@@ -27,30 +27,21 @@ export const AcademyProvider = ({ children }: { children: ReactNode }) => {
   const [academies, setAcademies] = useState<Academy[]>([]);
   const [currentAcademy, setCurrentAcademy] = useState<Academy | null>(null);
 
-  // ---------------------------
-  // Fetch academies for logged-in user
-  // ---------------------------
+  // Fetch all academies for the user
   const fetchAcademies = async () => {
     if (!user?.token) return;
 
     try {
       const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/academies/user`);
       const data = await res.json().catch(() => []);
-
-      // Ensure data is always an array
       const dataArray: Academy[] = Array.isArray(data) ? data : [];
 
       setAcademies(dataArray);
 
-      // Pick active academy
-      const active =
-        dataArray.find((a) => a.id === Number(user?.activeAcademyId)) ||
-        dataArray[0] ||
-        null;
-
+      // Determine active academy
+      const active = dataArray.find(a => a.id === user.activeAcademyId) || dataArray[0] || null;
       setCurrentAcademy(active);
 
-      // Switch academy if no activeAcademyId
       if (active && !user.activeAcademyId) {
         await handleAcademySwitch(active);
       }
@@ -61,9 +52,7 @@ export const AcademyProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // ---------------------------
-  // Switch academy
-  // ---------------------------
+  // Switch active academy
   const handleAcademySwitch = async (academy: Academy) => {
     if (!user) return;
 
@@ -72,27 +61,30 @@ export const AcademyProvider = ({ children }: { children: ReactNode }) => {
         `${process.env.NEXT_PUBLIC_API_URL}/academies/switch/${academy.id}`,
         { method: 'POST' }
       );
-
       const data = await res.json().catch(() => ({}));
 
       const newActiveAcademy = data.currentAcademy || academy;
-
       setCurrentAcademy(newActiveAcademy);
 
-      setUser({
+      // Update user token and activeAcademyId
+      const updatedUser: User = {
         ...user,
         token: data.token || user.token,
         activeAcademyId: newActiveAcademy.id,
-      });
+        academyIds: data.academyIds || user.academyIds || [],
+        permissions: data.permissions || user.permissions || [],
+      };
+
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      localStorage.setItem('token', updatedUser.token);
     } catch (err) {
       console.error('Switch academy error:', err);
       alert('Failed to switch academy. Please try again.');
     }
   };
 
-  // ---------------------------
-  // Create academy
-  // ---------------------------
+  // Create a new academy
   const createAcademy = async (academyData: Partial<Academy>) => {
     if (!user?.token) return null;
 
@@ -100,29 +92,28 @@ export const AcademyProvider = ({ children }: { children: ReactNode }) => {
       const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/academies`, {
         method: 'POST',
         body: JSON.stringify(academyData),
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
       });
 
-      if (!res.ok) {
-        const errorJson = await res.json().catch(() => ({}));
-        throw new Error(errorJson.message || 'Failed to create academy');
-      }
+      if (!res.ok) throw new Error('Failed to create academy');
 
       const resJson = await res.json().catch(() => ({}));
       const academy: Academy = resJson.academy;
 
-      // Update local state
-      setAcademies((prev) => [...prev, academy]);
+      setAcademies(prev => [...prev, academy]);
       setCurrentAcademy(academy);
 
-      setUser({
+      // Update user token & academy list
+      const updatedUser: User = {
         ...user,
-        token: user.token, // token remains same after creation
+        token: resJson.token || user.token,
         activeAcademyId: academy.id,
         academyIds: [...(user.academyIds || []), academy.id],
-      });
+      };
+
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      localStorage.setItem('token', updatedUser.token);
 
       return academy;
     } catch (err) {
@@ -131,14 +122,10 @@ export const AcademyProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const refreshAcademies = async () => {
-    await fetchAcademies();
-  };
+  const refreshAcademies = async () => fetchAcademies();
 
   useEffect(() => {
-    if (user) {
-      fetchAcademies();
-    }
+    if (user?.token) fetchAcademies();
   }, [user]);
 
   return (
@@ -150,7 +137,7 @@ export const AcademyProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-export const useAcademy = (): AcademyContextType => {
+export const useAcademy = () => {
   const context = useContext(AcademyContext);
   if (!context) throw new Error('useAcademy must be used inside AcademyProvider');
   return context;

@@ -42,6 +42,14 @@ module.exports = (sequelize, DataTypes) => {
         otherKey: 'teacherId',
         as: 'teachers',
       });
+
+      Class.associate = (models) => {
+        Class.hasMany(models.Exam, { foreignKey: "classId", as: "exams" });
+      };
+
+      // Class has many courses
+      Class.hasMany(models.Course, { foreignKey: 'classId', as: 'courses' });
+
     }
   }
 

@@ -39,9 +39,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const parsedUser: User = JSON.parse(storedUser);
         if (parsedUser.token) {
           setUser(parsedUser);
-          if (!parsedUser.activeAcademyId) {
-            updateActiveAcademy();
-          }
         }
       } catch (err) {
         console.error('Failed to parse stored user:', err);
@@ -51,9 +48,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  // Sync user → localStorage
+  // Sync user → localStorage whenever it changes
   useEffect(() => {
-    if (user && user.token) {
+    if (user?.token) {
       localStorage.setItem('user', JSON.stringify(user));
       localStorage.setItem('token', user.token);
     }
@@ -67,10 +64,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Switch active academy
   const updateActiveAcademy = async (academyId?: number) => {
-    if (!user?.token) {
-      console.warn('No user token, cannot switch academy.');
-      return;
-    }
+    if (!user?.token) return;
 
     try {
       const url = academyId
@@ -134,7 +128,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return res;
   };
 
-  // Admin check (case insensitive)
   const canCreateAcademy = user?.role?.toLowerCase() === 'admin';
 
   return (

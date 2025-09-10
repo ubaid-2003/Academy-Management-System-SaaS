@@ -155,7 +155,8 @@ const TeacherManagementPage: React.FC = () => {
   // Update teacher
   const updateTeacher = async (id: number, updatedData: any) => {
     try {
-      const token = localStorage.getItem("token");
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      const token = user?.token;
       if (!token) throw new Error("Not authorized");
 
       const res = await fetch(`http://localhost:5000/api/teachers/${id}`, {
@@ -210,8 +211,14 @@ const TeacherManagementPage: React.FC = () => {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    if (name === "subjects") {
+      setFormData((prev) => ({ ...prev, subjects: value.split(",").map(s => s.trim()) }));
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
   };
+
 
   // ✅ Reset form correctly
   const resetForm = () => {
@@ -310,7 +317,7 @@ const TeacherManagementPage: React.FC = () => {
     setFilterSubject("All");
   };
 
-  const subjects = ["All", ...Array.from(new Set(teachers.map((t) => t.subjects)))];
+  const subjects = ["All", ...Array.from(new Set(teachers.flatMap(t => t.subjects)))];
   const statuses = ["All", "Active", "Inactive", "suspended"];
 
   const filteredTeachers = teachers.filter((teacher) => {
@@ -326,7 +333,7 @@ const TeacherManagementPage: React.FC = () => {
   // Status Badge Component
   const StatusBadge = ({ status }: { status: string }) => {
     let bgColor = "bg-gray-100 text-gray-800";
-    if (status === "Active") bgColor = "bg-green-100 text-green-800 border border-green-200";
+    if (status === "active") bgColor = "bg-green-100 text-green-800 border border-green-200";
     else if (status === "suspended") bgColor = "bg-yellow-100 text-yellow-800 border border-yellow-200";
     else if (status === "Inactive") bgColor = "bg-red-100 text-red-800 border border-red-200";
 
@@ -444,10 +451,6 @@ const TeacherManagementPage: React.FC = () => {
                   Emergency Contact
                 </h3>
                 <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Name:</span>
-                    <span className="font-medium">{teacher.phone}</span>
-                  </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Phone:</span>
                     <span className="font-medium">{teacher.phone}</span>
@@ -666,11 +669,10 @@ const TeacherManagementPage: React.FC = () => {
                   <label className="block mb-2 font-medium text-gray-700">Subject *</label>
                   <input
                     type="text"
-                    name="subjects"          // ← must match 'subjects' in state
-                    value={formData.subjects} // controlled input
+                    name="subjects"
+                    value={formData.subjects.join(", ")}
                     onChange={handleInputChange}
-                    required
-                    placeholder="e.g., Mathematics"
+                    placeholder="e.g., Math, Science"
                     className="w-full px-4 py-2 transition border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
 
@@ -697,9 +699,9 @@ const TeacherManagementPage: React.FC = () => {
                     required
                     className="w-full px-4 py-2 transition border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                    <option value="Suspended">Suspended</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                    <option value="suspended">Suspended</option>
                   </select>
                 </div>
               </div>

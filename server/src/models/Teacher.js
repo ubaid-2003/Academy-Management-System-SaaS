@@ -4,7 +4,9 @@ const { Model } = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
   class Teacher extends Model {
     static associate(models) {
+      // -------------------------------
       // Belongs to one Academy
+      // -------------------------------
       Teacher.belongsTo(models.Academy, {
         foreignKey: 'academyId',
         as: 'academy',
@@ -12,7 +14,9 @@ module.exports = (sequelize, DataTypes) => {
         onUpdate: 'CASCADE',
       });
 
+      // -------------------------------
       // Many-to-many: Teacher <-> Student (through teacher_students)
+      // -------------------------------
       Teacher.belongsToMany(models.Student, {
         through: models.TeacherStudents,
         foreignKey: 'teacherId',
@@ -27,7 +31,9 @@ module.exports = (sequelize, DataTypes) => {
         onUpdate: 'CASCADE',
       });
 
-      // ✅ NEW: Many-to-many: Teacher <-> Class (through class_teachers)
+      // -------------------------------
+      // Many-to-many: Teacher <-> Class (through class_teachers)
+      // -------------------------------
       Teacher.belongsToMany(models.Class, {
         through: models.ClassTeachers,
         foreignKey: 'teacherId',
@@ -35,12 +41,21 @@ module.exports = (sequelize, DataTypes) => {
         as: 'classes',
       });
 
-      // Direct access to junction table if needed
       Teacher.hasMany(models.ClassTeachers, {
         foreignKey: 'teacherId',
         as: 'classLinks',
         onDelete: 'CASCADE',
         onUpdate: 'CASCADE',
+      });
+
+      // -------------------------------
+      // Many-to-many: Teacher <-> Course (through course_teacher)
+      // -------------------------------
+      Teacher.belongsToMany(models.Course, {
+        through: models.CourseTeacher,
+        foreignKey: 'teacherId',
+        otherKey: 'courseId',
+        as: 'courses',
       });
     }
   }

@@ -2,10 +2,13 @@ const jwt = require("jsonwebtoken");
 require("dotenv").config();
 const { User, Role, Permission } = require("../models");
 
+// ========================== AUTH MIDDLEWARE ==========================
 const authMiddleware = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
-    if (!authHeader?.startsWith("Bearer ")) {
+
+    // Check for token existence
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return res.status(401).json({ message: "Unauthorized: No token provided" });
     }
 
@@ -24,7 +27,7 @@ const authMiddleware = async (req, res, next) => {
       });
     }
 
-    // Load user with role + permissions
+    // Fetch user with role and permissions
     const user = await User.findByPk(decoded.id, {
       attributes: { exclude: ["password"] },
       include: [
@@ -46,7 +49,26 @@ const authMiddleware = async (req, res, next) => {
       return res.status(401).json({ message: "Unauthorized: User not found" });
     }
 
-    req.user = user; // save user with role + permissions in req
+    // Ensure role exists
+    if (!user.role) {
+      user.role = {
+        name: "unknown",
+        permissions: [],
+      };
+    }
+
+    // Ensure permissions array exists
+    if (!Array.isArray(user.role.permissions)) {
+      user.role.permissions = [];
+    }
+
+    // Normalize permission names to lowercase
+    user.role.permissions = user.role.permissions.map(p => ({
+      ...p.dataValues,
+      name: p.name?.toLowerCase() || "",
+    }));
+
+    req.user = user;
     next();
   } catch (err) {
     console.error("🔥 AuthMiddleware Error:", err);
@@ -57,6 +79,7 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
+// ========================== ADMIN ONLY MIDDLEWARE ==========================
 const adminAuth = (req, res, next) => {
   if (!req.user) {
     return res.status(401).json({ message: "Unauthorized" });

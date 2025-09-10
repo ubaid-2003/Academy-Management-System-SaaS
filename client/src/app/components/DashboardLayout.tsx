@@ -3,14 +3,42 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "../context/AuthContext";
-import { useAcademy } from '../context/AcademyContext'; 
+import { useAcademy } from '../context/AcademyContext';
 import {
+    // Dashboard
     Home,
-    Users,
-    LogOut,
+
+    // Academy Management
+    Building2,
     GraduationCap,
-    BarChart,
+    PlusCircle,
+    BookOpen,
+    CalendarDays,
+
+    // User Management
+    UserCheck,
+    Users,
+    Shield,
+
+    // Exams & Attendance
+    FileText,
+    Award,
+    ClipboardList,
+
+    // Finance & Fees
+    Wallet,
+
+    // Library & Resources
+    BookCopy,
+
+    // Reports & Analytics
+    BarChart3,
+
+    // Settings
     Settings,
+
+    // UI / Utility
+    LogOut,
     User,
     ChevronLeft,
     ChevronRight,
@@ -18,12 +46,7 @@ import {
     Search,
     Menu,
     X,
-    Building2,
     ChevronDown,
-    BookOpen,
-    Calendar,
-    UserCheck,
-    TrendingUp,
 } from "lucide-react";
 
 // ------------------ TYPES ------------------
@@ -66,7 +89,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const [searchQuery, setSearchQuery] = useState<string>("");
 
     // ✅ useAuth (single source of truth)
-    const { user, setUser, logout, updateActiveAcademy } = useAuth();
+    const { user, setUser, fetchWithAuth, logout, updateActiveAcademy } = useAuth();
 
     interface AcademyStats {
         totalStudents: number;
@@ -89,37 +112,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     useEffect(() => {
         const fetchUserAcademies = async () => {
-            if (!user?.token) return;
+            if (!user) return;
             setLoadingAcademies(true);
             setError(null);
 
             try {
-                const res = await fetch("http://localhost:5000/api/academies/user", {
-                    headers: { Authorization: `Bearer ${user.token}` },
-                });
+                // Use fetchWithAuth to handle 401 and headers
+                const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/academies/user`);
+                const data = await res.json().catch(() => []);
 
-                const data = await res.json();
-
-                if (!res.ok) {
-                    throw new Error(data.message || "Failed to fetch academies");
-                }
-
-                // Ensure data is always an array
                 const academiesArray: Academy[] = Array.isArray(data) ? data : [];
-
                 setAcademies(academiesArray);
 
-                // Set active academy if not already set
+                // If no active academy, set the first one
                 if (!user.activeAcademyId && academiesArray.length > 0) {
-                    const updatedToken = await updateActiveAcademy(academiesArray[0].id);
-                    setUser({
-                        ...user,
-                        token: updatedToken,
-                        activeAcademyId: academiesArray[0].id,
-                    });
+                    await updateActiveAcademy(academiesArray[0].id);
+                    // No need to manually setUser; updateActiveAcademy handles it
                 }
             } catch (err: any) {
-                console.error(err);
+                console.error("Error fetching academies:", err);
                 setError(err.message || "Something went wrong");
             } finally {
                 setLoadingAcademies(false);
@@ -127,7 +138,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         };
 
         fetchUserAcademies();
-    }, [user?.token]);
+    }, [user, fetchWithAuth, updateActiveAcademy]);
+
 
     const activeAcademy = academies.find(a => a.id === user?.activeAcademyId) || null;
 
@@ -136,19 +148,72 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         setAcademies([]);
         router.replace("/auth/login");
     };
-
     // ------------------ NAVIGATION ------------------
-    const navigationItems: NavItem[] = [
-        { label: "Dashboard", href: "/pages/dashboard", icon: Home },
-        { label: "My Academies", href: "/pages/academy-admin/academies", icon: Building2 },
-        { label: "Add Academy", href: "/pages/academy-admin/add-academy", icon: GraduationCap },
-        { label: "Manage Teachers", href: "/pages/academy-admin/add-teachers", icon: UserCheck },
-        { label: "Manage Students", href: "/pages/academy-admin/add-students", icon: Users },
-        { label: "Courses", href: "/pages/academy-admin/courses", icon: BookOpen },
-        { label: "Classes", href: "/pages/academy-admin/classes", icon: Calendar },
-        { label: "Analytics", href: "/pages/academy-admin/analytics", icon: BarChart },
-        { label: "Settings", href: "/pages/academy-admin/settings", icon: Settings },
+    // ------------------ NAVIGATION ------------------
+    interface NavSection {
+        section: string;
+        items: NavItem[];
+    }
+
+    const navigation: NavSection[] = [
+        {
+            section: "Dashboard",
+            items: [
+                { label: "Dashboard", href: "/pages/dashboard", icon: Home },
+            ],
+        },
+        {
+            section: "Academy Management",
+            items: [
+                { label: "My Academies", href: "/pages/academy-admin/academies", icon: Building2 },
+                { label: "Add Academy", href: "/pages/academy-admin/add-academy", icon: PlusCircle },
+                { label: "Courses", href: "/pages/academy-admin/courses", icon: BookOpen },
+                { label: "Classes", href: "/pages/academy-admin/classes", icon: CalendarDays },
+            ],
+        },
+        {
+            section: "User Management",
+            items: [
+                { label: "Teachers", href: "/pages/academy-admin/add-teachers", icon: UserCheck },
+                { label: "Students", href: "/pages/academy-admin/add-students", icon: Users },
+                { label: "Roles & Permissions", href: "/pages/academy-admin/add-roles", icon: Shield },
+            ],
+        },
+        {
+            section: "Exams & Attendance",
+            items: [
+                { label: "Exam Management", href: "/pages/academy-admin/exams", icon: FileText },
+                { label: "Results", href: "/pages/academy-admin/results", icon: Award },
+                { label: "Attendance", href: "/pages/academy-admin/attendance", icon: ClipboardList },
+            ],
+        },
+        {
+            section: "Finance & Fees",
+            items: [
+                { label: "Fee Management", href: "/pages/academy-admin/fees", icon: Wallet },
+            ],
+        },
+        {
+            section: "Library & Resources",
+            items: [
+                { label: "Library", href: "/pages/academy-admin/library", icon: BookCopy },
+            ],
+        },
+        {
+            section: "Reports & Analytics",
+            items: [
+                { label: "Analytics", href: "/pages/academy-admin/analytics", icon: BarChart3 },
+            ],
+        },
+        {
+            section: "Settings",
+            items: [
+                { label: "Settings", href: "/pages/academy-admin/settings", icon: Settings },
+            ],
+        },
     ];
+
+
 
     // ------------------ SEARCH DEBOUNCE ------------------
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -248,23 +313,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
                 {/* Navigation */}
                 <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-                    {navigationItems.map(item => {
-                        const Icon = item.icon;
-                        const isActive = pathname.startsWith(item.href);
-                        return (
-                            <button
-                                key={item.label}
-                                onClick={() => {
-                                    router.push(item.href);
-                                    setMobileMenuOpen(false);
-                                }}
-                                className={`w-full flex items-center space-x-4 px-4 py-3 rounded-xl transition-all duration-200 group ${collapsed ? "justify-center" : ""} ${isActive ? "bg-slate-200 text-slate-900 font-semibold" : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"}`}
-                            >
-                                <Icon className={`flex-shrink-0 w-5 h-5 transition-colors ${isActive ? "text-slate-900" : ""}`} />
-                                {!collapsed && <span className="font-medium tracking-tight">{item.label}</span>}
-                            </button>
-                        );
-                    })}
+                    {navigation.map(section =>
+                        section.items.map(item => {
+                            const Icon = item.icon;
+                            const isActive = pathname.startsWith(item.href);
+                            return (
+                                <button
+                                    key={item.label}
+                                    onClick={() => {
+                                        router.push(item.href);
+                                        setMobileMenuOpen(false);
+                                    }}
+                                    className={`w-full flex items-center space-x-4 px-4 py-3 rounded-xl transition-all duration-200 group ${collapsed ? "justify-center" : ""} ${isActive ? "bg-slate-200 text-slate-900 font-semibold" : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"}`}
+                                >
+                                    <Icon className={`flex-shrink-0 w-5 h-5 transition-colors ${isActive ? "text-slate-900" : ""}`} />
+                                    {!collapsed && <span className="font-medium tracking-tight">{item.label}</span>}
+                                </button>
+                            );
+                        })
+                    )}
                 </nav>
 
                 {/* User Profile & Logout */}
