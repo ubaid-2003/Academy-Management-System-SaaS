@@ -176,14 +176,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             items: [
                 { label: "Teachers", href: "/pages/academy-admin/add-teachers", icon: UserCheck },
                 { label: "Students", href: "/pages/academy-admin/add-students", icon: Users },
-                { label: "Roles & Permissions", href: "/pages/academy-admin/add-roles", icon: Shield },
             ],
         },
         {
             section: "Exams & Attendance",
             items: [
                 { label: "Exam Management", href: "/pages/academy-admin/exams", icon: FileText },
-                { label: "Results", href: "/pages/academy-admin/results", icon: Award },
+                // { label: "Results", href: "/pages/academy-admin/results", icon: Award },
                 { label: "Attendance", href: "/pages/academy-admin/attendance", icon: ClipboardList },
             ],
         },
@@ -194,16 +193,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             ],
         },
         {
-            section: "Library & Resources",
+            section: "Roles",
             items: [
-                { label: "Library", href: "/pages/academy-admin/library", icon: BookCopy },
-            ],
-        },
-        {
-            section: "Reports & Analytics",
-            items: [
-                { label: "Analytics", href: "/pages/academy-admin/analytics", icon: BarChart3 },
-            ],
+                { label: "Roles & Permissions", href: "/pages/academy-admin/add-roles", icon: Shield },
+
+            ]
         },
         {
             section: "Settings",
@@ -445,6 +439,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                     </div>
                                 </div>
                             )}
+                            
                         </div>
 
                         {/* Search */}

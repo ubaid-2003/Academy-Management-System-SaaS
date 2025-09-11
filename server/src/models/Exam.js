@@ -55,11 +55,23 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true
     }
   }, {
-    tableName: 'exams'
+    tableName: 'exams',
+    timestamps: true
   });
 
-  // DO NOT define associations here to avoid duplicate alias errors
-  Exam.associate = (models) => { /* optional placeholder */ };
+  Exam.associate = (models) => {
+    // Many-to-Many with Students (via StudentExam)
+    Exam.belongsToMany(models.Student, {
+      through: models.StudentExam,
+      foreignKey: 'examId',
+      otherKey: 'studentId',
+      as: 'examStudents', // Unique alias
+    });
+
+
+    // If you need more associations, always use unique `as` names:
+    // Example: Exam.belongsToMany(models.Teacher, { ... as: 'examTeachers' });
+  };
 
   return Exam;
 };

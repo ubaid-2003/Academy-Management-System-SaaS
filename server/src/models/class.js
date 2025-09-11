@@ -1,3 +1,4 @@
+// models/Class.js
 'use strict';
 const { Model } = require('sequelize');
 
@@ -43,59 +44,33 @@ module.exports = (sequelize, DataTypes) => {
         as: 'teachers',
       });
 
-      Class.associate = (models) => {
-        Class.hasMany(models.Exam, { foreignKey: "classId", as: "exams" });
-      };
+      // Class has many exams
+      Class.hasMany(models.Exam, { foreignKey: "classId", as: "exams" });
 
       // Class has many courses
       Class.hasMany(models.Course, { foreignKey: 'classId', as: 'courses' });
 
+      // 🔹 Fee Associations
+      Class.hasOne(models.FeeStructure, {
+        foreignKey: 'classId',
+        as: 'feeStructure',
+        onDelete: 'CASCADE',
+      });
     }
   }
 
   Class.init(
     {
-      id: {
-        type: DataTypes.INTEGER.UNSIGNED,
-        autoIncrement: true,
-        primaryKey: true,
-      },
-      name: {
-        type: DataTypes.STRING,
-        allowNull: false,
-      },
-      section: {
-        type: DataTypes.STRING, // e.g., A, B, C
-        allowNull: true,
-      },
-      gradeLevel: {
-        type: DataTypes.STRING, // e.g., Grade 1, Grade 8
-        allowNull: false,
-      },
-      academicYear: {
-        type: DataTypes.STRING, // e.g., 2025-2026
-        allowNull: false,
-      },
-      shift: {
-        type: DataTypes.ENUM('Morning', 'Evening'),
-        allowNull: true,
-      },
-      medium: {
-        type: DataTypes.ENUM('English', 'Urdu'),
-        allowNull: true,
-      },
-      capacity: {
-        type: DataTypes.INTEGER.UNSIGNED,
-        allowNull: true,
-      },
-      status: {
-        type: DataTypes.ENUM('active', 'inactive'),
-        defaultValue: 'active',
-      },
-      academyId: {
-        type: DataTypes.INTEGER.UNSIGNED,
-        allowNull: false,
-      },
+      id: { type: DataTypes.INTEGER.UNSIGNED, autoIncrement: true, primaryKey: true },
+      name: { type: DataTypes.STRING, allowNull: false },
+      section: { type: DataTypes.STRING },
+      gradeLevel: { type: DataTypes.STRING, allowNull: false },
+      academicYear: { type: DataTypes.STRING, allowNull: false },
+      shift: { type: DataTypes.ENUM('Morning', 'Evening') },
+      medium: { type: DataTypes.ENUM('English', 'Urdu') },
+      capacity: { type: DataTypes.INTEGER.UNSIGNED },
+      status: { type: DataTypes.ENUM('active', 'inactive'), defaultValue: 'active' },
+      academyId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
     },
     {
       sequelize,

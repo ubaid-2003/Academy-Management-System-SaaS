@@ -13,6 +13,8 @@ const teacherRoutes = require("./src/routes/teacherRoutes");
 const classRoutes = require("./src/routes/classRoutes");
 const courseRoutes = require("./src/routes/courseRoutes");
 const examRoutes = require("./src/routes/examRoutes");
+const feeRoutes = require('./src/routes/feeRoutes');
+
 
 const app = express();
 
@@ -43,6 +45,7 @@ app.use("/api", teacherRoutes);
 app.use("/api", classRoutes);
 app.use("/api", courseRoutes);
 app.use("/api", examRoutes);
+app.use('/api', feeRoutes);
 
 // =====================
 // Global error handler

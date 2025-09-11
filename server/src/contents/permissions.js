@@ -39,6 +39,26 @@ module.exports = {
   UPDATE_EXAM: "update_exam",              // Admin / SuperAdmin
   DELETE_EXAM: "delete_exam",              // Admin / SuperAdmin
   VIEW_EXAM: "view_exam",                  // All roles
-  ASSIGN_EXAM: "assign_exam",            // Teacher / Admin / SuperAdmin
+  ASSIGN_EXAM: "assign_exam",              // Teacher / Admin / SuperAdmin
   VIEW_EXAM_RESULT: "view_exam_result",    // Teacher / Student / Admin / SuperAdmin
+
+  // ==================== Fee Management Permissions ====================
+  // Fee Structures
+  VIEW_FEE_STRUCTURES: "view_fee_structures",       // Admin / SuperAdmin / Teacher
+  CREATE_FEE_STRUCTURES: "create_fee_structures",   // Admin / SuperAdmin
+  EDIT_FEE_STRUCTURES: "edit_fee_structures",       // Admin / SuperAdmin
+  DELETE_FEE_STRUCTURES: "delete_fee_structures",   // Admin / SuperAdmin
+
+  // Fee Payments
+  VIEW_FEE_PAYMENTS: "view_fee_payments",           // Admin / SuperAdmin / Teacher / Student (own)
+  CREATE_FEE_PAYMENTS: "create_fee_payments",       // Admin / SuperAdmin
+  EDIT_FEE_PAYMENTS: "edit_fee_payments",           // Admin / SuperAdmin
+  DELETE_FEE_PAYMENTS: "delete_fee_payments",       // Admin / SuperAdmin
+  EXPORT_FEE_REPORTS: "export_fee_reports",         // Admin / SuperAdmin
+
+  // ==================== Student-Fee Assignment ====================
+  ASSIGN_FEE_STRUCTURE: "assign_fee_structure",     // Admin / SuperAdmin
+  EDIT_STUDENT_FEES: "edit_student_fees",           // Admin / SuperAdmin
+  VIEW_STUDENT_FEES: "view_student_fees",           // Admin / SuperAdmin / Teacher / Student (own)
+  RECORD_PAYMENT: "record_payment",                 // Admin / SuperAdmin / Teacher
 };

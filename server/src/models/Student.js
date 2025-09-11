@@ -1,4 +1,3 @@
-// models/Student.js
 'use strict';
 const { Model } = require('sequelize');
 
@@ -13,16 +12,31 @@ module.exports = (sequelize, DataTypes) => {
         onUpdate: 'CASCADE',
       });
 
-      Student.associate = (models) => {
-        Student.belongsToMany(models.Exam, {
-          through: models.StudentExam,
-          foreignKey: "studentId",
-          otherKey: "examId",
-          as: "exams",
-        });
-      };
+      // Fee Structures assigned to student
+      Student.belongsToMany(models.FeeStructure, {
+        through: models.StudentFeeStructure,
+        foreignKey: 'studentId',
+        otherKey: 'feeStructureId',
+        as: 'assignedFeeStructures',
+      });
 
-      // Many-to-many with Teacher
+      // Student's fee payments
+      Student.hasMany(models.FeePayment, {
+        foreignKey: 'studentId',
+        as: 'feePayments',
+        onDelete: 'CASCADE'
+      });
+
+      // Many-to-many with Exams
+      Student.belongsToMany(models.Exam, {
+        through: models.StudentExam,
+        foreignKey: "studentId",
+        otherKey: "examId",
+        as: "studentExams", // Unique alias
+      });
+
+
+      // Many-to-many with Teachers
       Student.belongsToMany(models.Teacher, {
         through: models.TeacherStudents,
         foreignKey: 'studentId',
@@ -30,7 +44,7 @@ module.exports = (sequelize, DataTypes) => {
         as: 'teachers',
       });
 
-      // Many-to-many with Class
+      // Many-to-many with Classes
       Student.belongsToMany(models.Class, {
         through: models.ClassStudents,
         foreignKey: 'studentId',
@@ -38,14 +52,13 @@ module.exports = (sequelize, DataTypes) => {
         as: 'classes',
       });
 
-      // Student enrolled in many courses
+      // Courses enrolled
       Student.belongsToMany(models.Course, {
         through: models.CourseStudent,
         foreignKey: 'studentId',
         otherKey: 'courseId',
         as: 'courses'
       });
-
     }
   }
 
