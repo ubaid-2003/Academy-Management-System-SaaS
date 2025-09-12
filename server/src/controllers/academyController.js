@@ -3,7 +3,6 @@ const jwt = require("jsonwebtoken"); // add this line
 
 // ==================== CREATE ACADEMY ====================
 const createAcademy = async (req, res) => {
-  const t = await sequelize.transaction();
   try {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
@@ -24,90 +23,92 @@ const createAcademy = async (req, res) => {
       status,
       facilities,
       notes,
-      teacherIds = [], // ✅ teacher IDs coming from frontend
-      studentIds = [], // ✅ student IDs coming from frontend
+      teacherIds = [],
+      studentIds = [],
     } = req.body;
 
-    if (!name || !registrationNumber || !status || !principalName)
+    if (!name || !registrationNumber || !status || !principalName) {
       return res.status(400).json({ message: "Required fields missing" });
+    }
 
     const validStatuses = ["Active", "Inactive", "Pending"];
-    if (!validStatuses.includes(status))
+    if (!validStatuses.includes(status)) {
       return res
         .status(400)
         .json({ message: `Invalid status. Must be one of ${validStatuses.join(", ")}` });
+    }
 
-    const [academy, created] = await Academy.findOrCreate({
-      where: { registrationNumber: registrationNumber.trim() },
-      defaults: {
-        name: name.trim(),
-        address,
-        city,
-        province,
-        country,
-        email,
-        phone,
-        principalName: principalName.trim(),
-        totalStudents: 0,
-        totalTeachers: 0,
-        status,
-        facilities,
-        notes,
-      },
-      transaction: t,
+    // ✅ Managed transaction — auto commit/rollback
+    const academy = await sequelize.transaction(async (t) => {
+      const [academy, created] = await Academy.findOrCreate({
+        where: { registrationNumber: registrationNumber.trim() },
+        defaults: {
+          name: name.trim(),
+          address,
+          city,
+          province,
+          country,
+          email,
+          phone,
+          principalName: principalName.trim(),
+          totalStudents: 0,
+          totalTeachers: 0,
+          status,
+          facilities,
+          notes,
+        },
+        transaction: t,
+      });
+
+      if (!created) {
+        throw new Error("Academy with this registration number already exists");
+      }
+
+      // Link academy to user with role
+      const roleId = user.role?.id;
+      await user.addAcademy(academy, { through: { roleId }, transaction: t });
+
+      // Update teachers
+      if (teacherIds.length) {
+        await Teacher.update(
+          { academyId: academy.id },
+          { where: { id: teacherIds }, transaction: t }
+        );
+      }
+
+      // Update students
+      if (studentIds.length) {
+        await Student.update(
+          { academyId: academy.id },
+          { where: { id: studentIds }, transaction: t }
+        );
+      }
+
+      return academy;
     });
 
-    if (!created) {
-      await t.rollback();
-      return res
-        .status(400)
-        .json({ message: "Academy with this registration number already exists" });
-    }
-
-    // Link academy to user
-    const roleId = user.role?.id;
-    await user.addAcademy(academy, { through: { roleId }, transaction: t });
-
-    // ✅ Link selected teachers & students
-    if (teacherIds.length) {
-      await Teacher.update(
-        { academyId: academy.id },
-        { where: { id: teacherIds }, transaction: t }
-      );
-    }
-
-    if (studentIds.length) {
-      await Student.update(
-        { academyId: academy.id },
-        { where: { id: studentIds }, transaction: t }
-      );
-    }
-
-    await t.commit();
-
-    // ✅ Fetch academy with teacher & student (only id + name for dropdown)
+    // ✅ Fetch academy with teachers & students (after commit)
     const academyWithDropdownData = await Academy.findByPk(academy.id, {
       include: [
-        { model: Teacher, as: "teachers", attributes: ["id", "name"] },
-        { model: Student, as: "students", attributes: ["id", "name"] },
+        { model: Teacher, as: "teachers", attributes: ["id", "firstName"] },
+        { model: Student, as: "students", attributes: ["id", "firstName"] },
       ],
     });
 
     return res.status(201).json({
-  message: "Academy created successfully",
-  academy: academyWithDropdownData,
-  teachers: academyWithDropdownData.teachers || [],
-  students: academyWithDropdownData.students || []
-});
+      message: "Academy created successfully",
+      academy: academyWithDropdownData,
+      teachers: academyWithDropdownData.teachers || [],
+      students: academyWithDropdownData.students || [],
+    });
   } catch (err) {
-    await t.rollback();
     console.error("CreateAcademy error:", err);
     return res.status(500).json({
-      message: "Server error creating academy",
-      error: err.message,
+      message: err.message || "Server error creating academy",
     });
   }
 };
+
 
 
 // ==================== UPDATE ACADEMY ====================

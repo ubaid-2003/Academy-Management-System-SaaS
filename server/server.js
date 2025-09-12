@@ -1,11 +1,8 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const { sequelize } = require("./src/models"); // only sequelize needed
+const { sequelize } = require("./src/models");
 
-// =====================
-// Import routes
-// =====================
 const authRoutes = require("./src/routes/auth");
 const academyRoutes = require("./src/routes/academyRoutes");
 const studentRoutes = require("./src/routes/studentRoutes");
@@ -13,13 +10,13 @@ const teacherRoutes = require("./src/routes/teacherRoutes");
 const classRoutes = require("./src/routes/classRoutes");
 const courseRoutes = require("./src/routes/courseRoutes");
 const examRoutes = require("./src/routes/examRoutes");
-const feeRoutes = require('./src/routes/feeRoutes');
-
+const feeRoutes = require("./src/routes/feeRoutes");
+const attendanceRoutes = require("./src/routes/attendanceRoutes");
 
 const app = express();
 
 // =====================
-// Global Middleware
+// Middleware
 // =====================
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -31,7 +28,7 @@ app.use(
 );
 
 // =====================
-// Health check
+// Health Check
 // =====================
 app.get("/", (req, res) => res.send("✅ API is running..."));
 
@@ -45,10 +42,11 @@ app.use("/api", teacherRoutes);
 app.use("/api", classRoutes);
 app.use("/api", courseRoutes);
 app.use("/api", examRoutes);
-app.use('/api', feeRoutes);
+app.use("/api", feeRoutes);
+app.use("/api", attendanceRoutes); // <-- all attendance routes prefixed with /api
 
 // =====================
-// Global error handler
+// Global Error Handler
 // =====================
 app.use((err, req, res, next) => {
   console.error("🔥 Error:", err.stack);
@@ -59,15 +57,15 @@ app.use((err, req, res, next) => {
 });
 
 // =====================
-// Start server
+// Start Server
 // =====================
-const PORT = process.env.PORT || 5000;
+const PORT = parseInt(process.env.PORT) || 5000;
 
 const startServer = async () => {
   try {
     console.log(
       process.env.NODE_ENV !== "production"
-        ? "⚙️  Development mode: syncing database..."
+        ? "⚙️  Development mode: connecting to database..."
         : "🔒 Production mode: connecting to database..."
     );
 

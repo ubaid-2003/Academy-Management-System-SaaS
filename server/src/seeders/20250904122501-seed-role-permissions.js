@@ -39,12 +39,12 @@ module.exports = {
       }
 
       if (role.name === 'Teacher') {
-        // Teacher allowed permissions including fee view
         const allowed = [
-          'view_course', 'assign_teacher', 'view_class', 
-          'create_exam', 'update_exam', 'view_exam', 
+          'view_course', 'assign_teacher', 'view_class',
+          'create_exam', 'update_exam', 'view_exam',
           'conduct_exam', 'view_exam_result',
-          'view_fee_structures', 'view_fee_payments'
+          'view_fee_structures', 'view_fee_payments',
+          'create_teacher_attendance', 'update_teacher_attendance', 'view_teacher_attendance'
         ];
         perms.forEach(p => {
           if (allowed.includes(p.name)) {
@@ -61,9 +61,10 @@ module.exports = {
       if (role.name === 'Student') {
         // Student allowed permissions including their own fee view
         const allowed = [
-          'view_course', 'enroll_student', 
+          'view_course', 'enroll_student',
           'view_exam', 'view_exam_result',
-          'view_fee_payments'
+          'view_fee_payments',
+          'view_student_attendance'
         ];
         perms.forEach(p => {
           if (allowed.includes(p.name)) {

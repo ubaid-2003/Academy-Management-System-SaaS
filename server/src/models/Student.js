@@ -59,6 +59,10 @@ module.exports = (sequelize, DataTypes) => {
         otherKey: 'courseId',
         as: 'courses'
       });
+
+      Student.hasMany(models.StudentAttendance, { foreignKey: 'studentId', as: 'attendances' });
+
+
     }
   }
 

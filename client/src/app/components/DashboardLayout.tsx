@@ -414,6 +414,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                                         try {
                                                             await updateActiveAcademy(academy.id);
                                                             setAcademyDropdownOpen(false);
+
+                                                            // ✅ Redirect to dashboard
+                                                            router.push("/pages/dashboard");
                                                         } catch (err) {
                                                             console.error("Failed to switch academy:", err);
                                                             alert("Failed to switch academy. Please try again.");
@@ -439,7 +442,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                     </div>
                                 </div>
                             )}
-                            
+
                         </div>
 
                         {/* Search */}

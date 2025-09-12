@@ -56,17 +56,25 @@ export const AcademyProvider = ({ children }: { children: ReactNode }) => {
   const handleAcademySwitch = async (academy: Academy) => {
     if (!user) return;
 
+    // 🚀 Optimistic update
+    setCurrentAcademy(academy);
+    const optimisticUser: User = {
+      ...user,
+      activeAcademyId: academy.id,
+    };
+    setUser(optimisticUser);
+    localStorage.setItem("user", JSON.stringify(optimisticUser));
+
     try {
       const res = await fetchWithAuth(
         `${process.env.NEXT_PUBLIC_API_URL}/academies/switch/${academy.id}`,
-        { method: 'POST' }
+        { method: "POST" }
       );
       const data = await res.json().catch(() => ({}));
 
       const newActiveAcademy = data.currentAcademy || academy;
-      setCurrentAcademy(newActiveAcademy);
 
-      // Update user token and activeAcademyId
+      // ✅ Final update from backend
       const updatedUser: User = {
         ...user,
         token: data.token || user.token,
@@ -75,35 +83,42 @@ export const AcademyProvider = ({ children }: { children: ReactNode }) => {
         permissions: data.permissions || user.permissions || [],
       };
 
+      setCurrentAcademy(newActiveAcademy);
       setUser(updatedUser);
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      localStorage.setItem('token', updatedUser.token);
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+      localStorage.setItem("token", updatedUser.token);
     } catch (err) {
-      console.error('Switch academy error:', err);
-      alert('Failed to switch academy. Please try again.');
+      console.error("Switch academy error:", err);
+      alert("Failed to switch academy. Please try again.");
+
+      // ❌ Rollback if error
+      await fetchAcademies();
     }
   };
 
-  // Create a new academy
+
   const createAcademy = async (academyData: Partial<Academy>) => {
     if (!user?.token) return null;
 
     try {
       const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/academies`, {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify(academyData),
-        headers: { 'Content-Type': 'application/json' },
+        headers: { "Content-Type": "application/json" },
       });
 
-      if (!res.ok) throw new Error('Failed to create academy');
+      if (!res.ok) throw new Error("Failed to create academy");
 
       const resJson = await res.json().catch(() => ({}));
       const academy: Academy = resJson.academy;
 
-      setAcademies(prev => [...prev, academy]);
+      // ✅ Update state immediately
+      setAcademies((prev) => [...prev, academy]);
       setCurrentAcademy(academy);
 
-      // Update user token & academy list
+      // ✅ Refresh academies in background to stay in sync
+      refreshAcademies();
+
       const updatedUser: User = {
         ...user,
         token: resJson.token || user.token,
@@ -112,15 +127,16 @@ export const AcademyProvider = ({ children }: { children: ReactNode }) => {
       };
 
       setUser(updatedUser);
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      localStorage.setItem('token', updatedUser.token);
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+      localStorage.setItem("token", updatedUser.token);
 
       return academy;
     } catch (err) {
-      console.error('Error creating academy:', err);
+      console.error("Error creating academy:", err);
       return null;
     }
   };
+
 
   const refreshAcademies = async () => fetchAcademies();
 

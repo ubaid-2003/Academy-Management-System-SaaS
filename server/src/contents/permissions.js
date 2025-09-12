@@ -9,56 +9,63 @@ module.exports = {
   SWITCH_ACADEMY: "switch_academy",        // Admin / SuperAdmin
 
   // ==================== Student Permissions ====================
-  CREATE_STUDENT: "create_student",        // Admin / SuperAdmin
-  UPDATE_STUDENT: "update_student",        // Admin / SuperAdmin
-  DELETE_STUDENT: "delete_student",        // Admin / SuperAdmin
-  VIEW_STUDENT: "view_student",            // All roles
+  CREATE_STUDENT: "create_student",        
+  UPDATE_STUDENT: "update_student",        
+  DELETE_STUDENT: "delete_student",        
+  VIEW_STUDENT: "view_student",            
 
   // ==================== Teacher Permissions ====================
-  CREATE_TEACHER: "create_teacher",        // Admin / SuperAdmin
-  UPDATE_TEACHER: "update_teacher",        // Admin / SuperAdmin
-  DELETE_TEACHER: "delete_teacher",        // Admin / SuperAdmin
-  VIEW_TEACHER: "view_teacher",            // All roles
+  CREATE_TEACHER: "create_teacher",        
+  UPDATE_TEACHER: "update_teacher",        
+  DELETE_TEACHER: "delete_teacher",        
+  VIEW_TEACHER: "view_teacher",            
 
   // ==================== Class Permissions ====================
-  CREATE_CLASS: "create_class",            // Admin / SuperAdmin
-  UPDATE_CLASS: "update_class",            // Admin / SuperAdmin
-  DELETE_CLASS: "delete_class",            // Admin / SuperAdmin
-  VIEW_CLASS: "view_class",                // All roles
+  CREATE_CLASS: "create_class",            
+  UPDATE_CLASS: "update_class",            
+  DELETE_CLASS: "delete_class",            
+  VIEW_CLASS: "view_class",                
 
   // ==================== Course Permissions ====================
-  CREATE_COURSE: "create_course",          // Admin / SuperAdmin
-  UPDATE_COURSE: "update_course",          // Admin / SuperAdmin
-  DELETE_COURSE: "delete_course",          // Admin / SuperAdmin
-  VIEW_COURSE: "view_course",              // All roles
-  ASSIGN_TEACHER: "assign_teacher",        // Admin / SuperAdmin
-  ENROLL_STUDENT: "enroll_student",        // Admin / SuperAdmin / Teacher
+  CREATE_COURSE: "create_course",          
+  UPDATE_COURSE: "update_course",          
+  DELETE_COURSE: "delete_course",          
+  VIEW_COURSE: "view_course",              
+  ASSIGN_TEACHER: "assign_teacher",        
+  ENROLL_STUDENT: "enroll_student",        
 
   // ==================== Exam Permissions ====================
-  CREATE_EXAM: "create_exam",              // Admin / SuperAdmin
-  UPDATE_EXAM: "update_exam",              // Admin / SuperAdmin
-  DELETE_EXAM: "delete_exam",              // Admin / SuperAdmin
-  VIEW_EXAM: "view_exam",                  // All roles
-  ASSIGN_EXAM: "assign_exam",              // Teacher / Admin / SuperAdmin
-  VIEW_EXAM_RESULT: "view_exam_result",    // Teacher / Student / Admin / SuperAdmin
+  CREATE_EXAM: "create_exam",              
+  UPDATE_EXAM: "update_exam",              
+  DELETE_EXAM: "delete_exam",              
+  VIEW_EXAM: "view_exam",                  
+  ASSIGN_EXAM: "assign_exam",              
+  VIEW_EXAM_RESULT: "view_exam_result",    
 
   // ==================== Fee Management Permissions ====================
-  // Fee Structures
-  VIEW_FEE_STRUCTURES: "view_fee_structures",       // Admin / SuperAdmin / Teacher
-  CREATE_FEE_STRUCTURES: "create_fee_structures",   // Admin / SuperAdmin
-  EDIT_FEE_STRUCTURES: "edit_fee_structures",       // Admin / SuperAdmin
-  DELETE_FEE_STRUCTURES: "delete_fee_structures",   // Admin / SuperAdmin
+  VIEW_FEE_STRUCTURES: "view_fee_structures",       
+  CREATE_FEE_STRUCTURES: "create_fee_structures",   
+  EDIT_FEE_STRUCTURES: "edit_fee_structures",       
+  DELETE_FEE_STRUCTURES: "delete_fee_structures",   
+  VIEW_FEE_PAYMENTS: "view_fee_payments",           
+  CREATE_FEE_PAYMENTS: "create_fee_payments",       
+  EDIT_FEE_PAYMENTS: "edit_fee_payments",           
+  DELETE_FEE_PAYMENTS: "delete_fee_payments",       
+  EXPORT_FEE_REPORTS: "export_fee_reports",         
 
-  // Fee Payments
-  VIEW_FEE_PAYMENTS: "view_fee_payments",           // Admin / SuperAdmin / Teacher / Student (own)
-  CREATE_FEE_PAYMENTS: "create_fee_payments",       // Admin / SuperAdmin
-  EDIT_FEE_PAYMENTS: "edit_fee_payments",           // Admin / SuperAdmin
-  DELETE_FEE_PAYMENTS: "delete_fee_payments",       // Admin / SuperAdmin
-  EXPORT_FEE_REPORTS: "export_fee_reports",         // Admin / SuperAdmin
+  ASSIGN_FEE_STRUCTURE: "assign_fee_structure",     
+  EDIT_STUDENT_FEES: "edit_student_fees",           
+  VIEW_STUDENT_FEES: "view_student_fees",           
+  RECORD_PAYMENT: "record_payment",                 
 
-  // ==================== Student-Fee Assignment ====================
-  ASSIGN_FEE_STRUCTURE: "assign_fee_structure",     // Admin / SuperAdmin
-  EDIT_STUDENT_FEES: "edit_student_fees",           // Admin / SuperAdmin
-  VIEW_STUDENT_FEES: "view_student_fees",           // Admin / SuperAdmin / Teacher / Student (own)
-  RECORD_PAYMENT: "record_payment",                 // Admin / SuperAdmin / Teacher
+  // ==================== Attendance Permissions ====================
+  CREATE_TEACHER_ATTENDANCE: "create_teacher_attendance",     
+  UPDATE_TEACHER_ATTENDANCE: "update_teacher_attendance",     
+  DELETE_TEACHER_ATTENDANCE: "delete_teacher_attendance",     
+  VIEW_TEACHER_ATTENDANCE: "view_teacher_attendance",         
+
+  CREATE_STUDENT_ATTENDANCE: "create_student_attendance",     
+  UPDATE_STUDENT_ATTENDANCE: "update_student_attendance",     
+  DELETE_STUDENT_ATTENDANCE: "delete_student_attendance",     
+  VIEW_STUDENT_ATTENDANCE: "view_student_attendance"          
 };

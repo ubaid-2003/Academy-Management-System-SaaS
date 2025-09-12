@@ -179,8 +179,10 @@ const CourseManagementSystem: React.FC = () => {
             if (Array.isArray(courseForm.classId)) payload.classId = courseForm.classId[0];
             if (Array.isArray(courseForm.prerequisites)) payload.prerequisites = (courseForm.prerequisites as string[]).join(',');
             payload.status = (payload.status || 'active').toString().toLowerCase();
+              console.log("before create course Api:")
 
-            await api.post(`/api/academies/${academyId}/courses`, payload);
+            const res = await api.post(`/api/academies/${academyId}/courses`, payload);
+            console.log("create course Api Result:", res)
 
             // ✅ Re-fetch all courses from backend to ensure state is always synced
             await fetchAll();

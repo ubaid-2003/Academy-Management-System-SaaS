@@ -56,6 +56,9 @@ module.exports = (sequelize, DataTypes) => {
         as: 'feeStructure',
         onDelete: 'CASCADE',
       });
+
+      Class.hasMany(models.StudentAttendance, { foreignKey: 'classId', as: 'studentAttendances' });
+
     }
   }
 

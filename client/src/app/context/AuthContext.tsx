@@ -6,7 +6,7 @@ export interface User {
   id: number;
   fullName: string;
   email: string;
-  role: 'Admin' | string;
+  role: string; // make flexible, backend might send different cases
   avatar?: string;
   token: string;
   activeAcademyId?: number;
@@ -43,7 +43,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       } catch (err) {
         console.error('Failed to parse stored user:', err);
         localStorage.removeItem('user');
-        localStorage.removeItem('token');
       }
     }
   }, []);
@@ -52,14 +51,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (user?.token) {
       localStorage.setItem('user', JSON.stringify(user));
-      localStorage.setItem('token', user.token);
+    } else {
+      localStorage.removeItem('user');
     }
   }, [user]);
 
   const logout = () => {
     setUser(null);
     localStorage.removeItem('user');
-    localStorage.removeItem('token');
   };
 
   // Switch active academy
@@ -96,7 +95,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       setUser(updatedUser);
       localStorage.setItem('user', JSON.stringify(updatedUser));
-      localStorage.setItem('token', updatedUser.token);
 
       return data;
     } catch (err) {
@@ -110,8 +108,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (!user?.token) throw new Error('No token found');
 
     const headers: Record<string, string> = {
-      ...(options.headers as Record<string, string>),
       Authorization: `Bearer ${user.token}`,
+      ...(options.headers ? options.headers as Record<string, string> : {}),
     };
 
     if (options.body && !headers['Content-Type']) {
